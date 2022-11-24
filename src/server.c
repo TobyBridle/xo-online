@@ -41,7 +41,7 @@ server_t server_init(short port) {
 
   // Bind the socket to the address
   printf("\x1b[33;1mAttempting to bind socket to address %hu\x1b[0m\n",
-         server_addr.sin_port);
+         htons(server_addr.sin_port));
   // Set the socket opts
   setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
 

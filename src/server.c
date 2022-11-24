@@ -1,6 +1,8 @@
 #include "lib/server.h"
 
 #define PORT 80
+pthread_t server_thread;
+/* pthread_t game_handling_thread; */
 
 int main(int argc, char *argv[]) {
   // Initialize the server
@@ -8,7 +10,7 @@ int main(int argc, char *argv[]) {
   int listen_status = server_listen(&server);
 
   // Start the server and wait for connections
-  server_serve(&server);
+  server_start(&server);
   server_unbind(&server);
   return 0;
 }
@@ -51,7 +53,10 @@ server_t server_init(short port) {
   }
   printf("\x1b[32;1mSocket bound successfully\033[0m\n");
 
-  // TODO: Create a hash table to store the currently connected clients
+  // NOTE: We need to create an array of max size MAX_CLIENTS
+  clients_t clients;
+  server->conns = clients;
+
   return *server;
 }
 
@@ -80,9 +85,17 @@ client_t server_accept(server_t *server) {
   }
 
   printf("\x1b[32;1mConnection accepted\x1b[0m\n");
+
   client_t client;
   client.socket = client_fd;
+  client.client_id = server->conns.count++;
+  // We need to send the client a message
+  // in which we request their name
+  // clinet.client_name = <whatever-the-response-is>
   client.addr = client_addr;
+  // Spectator by default so that they cannot interact with any games.
+  client.player_type = SPECTATOR;
+
   return client;
 }
 
@@ -91,15 +104,73 @@ void server_serve(server_t *server) {
   loop {
     // Accept a connection
     client_t client = server_accept(server);
-    /* TODO: Hash the client's name and place into server.clients
-     * Maybe we can implement a utils.h file with tools such as creating
-     * hashmaps and using them.
-     * */
+    // The ID of the client corresponds to the index of the client in the array
+    server->conns.clients[client.client_id] = client;
+  }
+  pthread_exit(NULL);
+}
+
+void server_start(server_t *server) {
+  // Ignore SIGCHLD to avoid zombie threads
+  signal(SIGCHLD, SIG_IGN);
+
+  // Start a new thread for the server.
+  // This thread will be responsible for accepting connections and
+  // should run as a background process, passing the output to the main tty
+  // using IPC. There should also be another thread for handling `n` games,
+  // where `n` is pre-determined. The main thread should be used for handling
+  // the servers state using commands.
+  int pipefd[2];
+  // Initialise the pipe
+  if (pipe(pipefd) == -1) {
+    fprintf(stderr, "Failed to create pipe\n");
+    exit(1);
+  }
+  int readfd = pipefd[0];
+  int writefd = pipefd[1];
+  pid_t child = fork();
+  char buf[1024];
+  // When child is forked, 0 is the return value.
+  // Otherwise, it is the PID of the child.
+  if (child != 0) {
+    // Wait for the child process to send IPC message for "start"
+    printf("Waiting for child to send IPC message for \"start\"\n");
+    while (read(readfd, buf, sizeof(buf)) == 0)
+      ;
+    if (strcmp(buf, "start") == 0) {
+      // Erase the line that we just printed
+      printf("\x1b[1A\033[K");
+      handle_commands(server, child);
+    }
+  } else {
+    pthread_create(&server_thread, NULL, (void *)server_serve, server);
+    write(writefd, "start", 5);
+  }
+}
+
+void handle_commands(server_t *server, pid_t subprocess) {
+  printf("Commands:\n1. Terminate Server\n2. Print current games\n");
+  loop {
+    char cmd = getchar();
+    switch (cmd) {
+    case '1':
+      printf("Terminating server...\n");
+      kill(subprocess, SIGKILL);
+      exit(0);
+      break;
+    case '2':
+      printf("Current games:\n");
+      break;
+    default:
+      printf("Invalid command\n");
+      break;
+    }
   }
 }
 
 int server_unbind(server_t *server) {
-  // We need to free the address and then any memory used
+  // We need to free the address and then
+  // any memory used
   server->port = 0;
   int shutdown_status = shutdown(server->socket, SHUT_RDWR);
   if (shutdown_status == -1) {
@@ -107,5 +178,6 @@ int server_unbind(server_t *server) {
   }
   server->socket = 0;
   free(server);
+  kill(getpid(), SIGKILL);
   return 0;
 }

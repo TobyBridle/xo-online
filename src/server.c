@@ -1,6 +1,9 @@
 #include "lib/server.h"
+#include <arpa/inet.h>
 
+const int MAX_CLIENTS = 1000;
 #define PORT 80
+
 pthread_t server_thread;
 /* pthread_t game_handling_thread; */
 
@@ -16,7 +19,6 @@ int main(int argc, char *argv[]) {
 }
 
 server_t server_init(short port) {
-  const int MAX_CLIENTS = 1000;
   printf("\x1b[33;1mAttempting to initialise server on port %d\x1b[0m\n", port);
   server_t *server;
   server = (server_t *)malloc(sizeof(server_t));
@@ -51,10 +53,11 @@ server_t server_init(short port) {
     handle_sock_error(errno);
     exit(1);
   }
-  printf("\x1b[32;1mSocket bound successfully\033[0m\n");
+  printf("\x1b[32;1mSocket bound successfully\x1b[0m\n");
 
   // NOTE: We need to create an array of max size MAX_CLIENTS
   clients_t clients;
+  clients.count = 0;
   server->conns = clients;
 
   return *server;
@@ -74,7 +77,6 @@ int server_listen(server_t *server) {
 
 client_t server_accept(server_t *server) {
   // Accept a connection
-  printf("\x1b[33;1mWaiting to accept a connection...\x1b[0m\n");
   struct sockaddr_in client_addr;
   socklen_t client_addr_size = sizeof(client_addr);
   int client_fd = accept(server->socket, (struct sockaddr *)&client_addr,
@@ -84,14 +86,23 @@ client_t server_accept(server_t *server) {
     exit(1);
   }
 
-  printf("\x1b[32;1mConnection accepted\x1b[0m\n");
+  // If there is a connection, we need to check if it places us above our
+  // threshold for maximum clients
+  if (server->conns.count >= MAX_CLIENTS) {
+    printf("\x1b[31;1mClient connection rejected; maximum clients "
+           "reached\x1b[0m\n");
+    return (client_t){0};
+  }
+
+  printf("\x1b[32;1mClient connected from %s:%d\x1b[0m\n",
+         inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
   client_t client;
   client.socket = client_fd;
   client.client_id = server->conns.count++;
   // We need to send the client a message
   // in which we request their name
-  // clinet.client_name = <whatever-the-response-is>
+  // client.client_name = <whatever-the-response-is>
   client.addr = client_addr;
   // Spectator by default so that they cannot interact with any games.
   client.player_type = SPECTATOR;
@@ -100,14 +111,15 @@ client_t server_accept(server_t *server) {
 }
 
 void server_serve(server_t *server) {
+  printf("\x1b[33;1mAttempting to serve client\x1b[0m\n");
+
+  char buf[1024];
   // NOTE: `loop` is a macro defined in `lib/server.h`
   loop {
     // Accept a connection
     client_t client = server_accept(server);
-    // The ID of the client corresponds to the index of the client in the array
     server->conns.clients[client.client_id] = client;
   }
-  pthread_exit(NULL);
 }
 
 void server_start(server_t *server) {
@@ -120,52 +132,7 @@ void server_start(server_t *server) {
   // using IPC. There should also be another thread for handling `n` games,
   // where `n` is pre-determined. The main thread should be used for handling
   // the servers state using commands.
-  int pipefd[2];
-  // Initialise the pipe
-  if (pipe(pipefd) == -1) {
-    fprintf(stderr, "Failed to create pipe\n");
-    exit(1);
-  }
-  int readfd = pipefd[0];
-  int writefd = pipefd[1];
-  pid_t child = fork();
-  char buf[1024];
-  // When child is forked, 0 is the return value.
-  // Otherwise, it is the PID of the child.
-  if (child != 0) {
-    // Wait for the child process to send IPC message for "start"
-    printf("Waiting for child to send IPC message for \"start\"\n");
-    while (read(readfd, buf, sizeof(buf)) == 0)
-      ;
-    if (strcmp(buf, "start") == 0) {
-      // Erase the line that we just printed
-      printf("\x1b[1A\033[K");
-      handle_commands(server, child);
-    }
-  } else {
-    pthread_create(&server_thread, NULL, (void *)server_serve, server);
-    write(writefd, "start", 5);
-  }
-}
-
-void handle_commands(server_t *server, pid_t subprocess) {
-  printf("Commands:\n1. Terminate Server\n2. Print current games\n");
-  loop {
-    char cmd = getchar();
-    switch (cmd) {
-    case '1':
-      printf("Terminating server...\n");
-      kill(subprocess, SIGKILL);
-      exit(0);
-      break;
-    case '2':
-      printf("Current games:\n");
-      break;
-    default:
-      printf("Invalid command\n");
-      break;
-    }
-  }
+  server_serve(server);
 }
 
 int server_unbind(server_t *server) {
@@ -178,6 +145,6 @@ int server_unbind(server_t *server) {
   }
   server->socket = 0;
   free(server);
-  kill(getpid(), SIGKILL);
+  kill(getpid(), SIGTERM);
   return 0;
 }

@@ -1,10 +1,13 @@
 # Build the executable and link all files
 # Needs to link all files within `src/lib`
-build: src/server.c src/lib/*.h
+build: src/server.c src/client.c src/lib/*.h
 	@echo "Building project and linking..."
-	@gcc -o server.out src/*.c
+	@make clean
+	@mkdir bin
+	@gcc -o bin/server src/server.c -Isrc/lib
+	@gcc -o bin/client src/client.c -Isrc/lib
 
 # Clean the object files and executable
 clean:
 	@echo "Cleaning up..."
-	@rm -f *.o *.out
+	@rm -rf ./bin

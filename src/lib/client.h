@@ -38,51 +38,56 @@ void client_disconnect(client_t *client);
 void handle_sock_error(int err) {
   switch (err) {
   case EACCES:
-    perror("Permission to create a socket of the specified type "
-           "and/or to bind to the specified port is denied.\n");
+    perror("\x1b[31;1mPermission to create a socket of the specified type "
+           "and/or to bind to the specified port is denied.\x1b[0m\n");
     break;
   case EADDRINUSE:
-    perror("The given address is already in use.\n");
+    perror("\x1b[31;1mThe given address is already in use.\x1b[0m\n");
     break;
   case EADDRNOTAVAIL:
-    perror("The specified address is not available from the local machine.\n");
+    perror("\x1b[31;1mThe specified address is not available from the local "
+           "machine.\x1b[0m\n");
     break;
   case EAFNOSUPPORT:
-    perror(
-        "Addresses in the specified family cannot be used with this socket.\n");
+    perror("Addresses in the specified family cannot be used with this "
+           "socket.\x1b[0m\n");
     break;
   case EINVAL:
-    perror("The socket is already bound to an address.\n");
+    perror("\x1b[31;1mThe socket is already bound to an address.\x1b[0m\n");
     break;
   case EMFILE:
-    perror("The process already has the maximum number of files open.\n");
+    perror("\x1b[31;1mThe process already has the maximum number of files "
+           "open.\x1b[0m\n");
     break;
   case ENFILE:
-    perror("The system limit on the total number of open files has "
-           "been reached.\n");
+    perror("\x1b[31;1mThe system limit on the total number of open files has "
+           "been reached.\x1b[0m\n");
     break;
   case ENOBUFS:
-    perror("Insufficient resources were available in the system to "
-           "perform the operation.\n");
+    perror("\x1b[31;1mInsufficient resources were available in the system to "
+           "perform the operation.\x1b[0m\n");
     break;
   case ENOMEM:
-    perror("Insufficient memory was available to fulfill the request.\n");
+    perror("\x1b[31;1mInsufficient memory was available to fulfill the "
+           "request.\x1b[0m\n");
     break;
   case EPROTONOSUPPORT:
-    perror("The protocol type or the specified protocol is not "
-           "supported within this domain.\n");
+    perror("\x1b[31;1mThe protocol type or the specified protocol is not "
+           "supported within this domain.\x1b[0m\n");
     break;
   case EPROTOTYPE:
-    perror("The protocol type is the wrong type for this socket.\n");
+    perror("\x1b[31;1mThe protocol type is the wrong type for this "
+           "socket.\x1b[0m\n");
     break;
   case ESOCKTNOSUPPORT:
-    perror("The socket type is not supported in this address family.\n");
+    perror("\x1b[31;1mThe socket type is not supported in this address "
+           "family.\x1b[0m\n");
     break;
   case ECONNREFUSED:
-    perror("No one listening on the remote address.\n");
+    perror("\x1b[31;1mNo one listening on the remote address.\x1b[0m\n");
     break;
   default:
-    fprintf(stderr, "Unknown error: %d\n", err);
+    fprintf(stderr, "Unknown error: %d\x1b[0m\n", err);
     break;
   }
 }

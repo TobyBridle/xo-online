@@ -1,24 +1,31 @@
 #include "lib/server.h"
 #include <arpa/inet.h>
+#include <signal.h>
 
-const int MAX_CLIENTS = 1000;
 #define PORT 80
+
+volatile sig_atomic_t server_interrupted = 0;
 
 pthread_t server_thread;
 /* pthread_t game_handling_thread; */
 
+void server_sigint(int sig) {
+  printf("\x1b[33;1mAttempting to disconnect from server\x1b[0m\n");
+  server_interrupted = 1;
+}
+
 int main(int argc, char *argv[]) {
   // Initialize the server
-  server_t server = server_init(PORT);
-  int listen_status = server_listen(&server);
+  server_t *server = server_init(PORT);
+  int listen_status = server_listen(server);
 
   // Start the server and wait for connections
-  server_start(&server);
-  server_unbind(&server);
+  server_start(server);
+  server_unbind(server);
   return 0;
 }
 
-server_t server_init(short port) {
+server_t *server_init(short port) {
   printf("\x1b[33;1mAttempting to initialise server on port %d\x1b[0m\n", port);
   server_t *server;
   server = (server_t *)malloc(sizeof(server_t));
@@ -51,16 +58,18 @@ server_t server_init(short port) {
       bind(socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
   if (bind_status == -1) {
     handle_sock_error(errno);
+    free(server);
     exit(1);
   }
   printf("\x1b[32;1mSocket bound successfully\x1b[0m\n");
 
-  // NOTE: We need to create an array of max size MAX_CLIENTS
-  clients_t clients;
+  // NOTE: We need to initialise all of the clients with 0
+  clients_t clients = {0};
   clients.count = 0;
+
   server->conns = clients;
 
-  return *server;
+  return server;
 }
 
 int server_listen(server_t *server) {
@@ -114,8 +123,10 @@ void server_serve(server_t *server) {
   printf("\x1b[33;1mAttempting to serve client\x1b[0m\n");
 
   char buf[1024];
-  // NOTE: `loop` is a macro defined in `lib/server.h`
-  loop {
+  // NOTE: server->state may be modified within the `server_unbind`
+  // function. This happens so that the server is not trying to accept new
+  // clients whilst also trying to shutdown.
+  while (server->state == ACCEPTING && !server_interrupted) {
     // Accept a connection
     client_t client = server_accept(server);
     server->conns.clients[client.client_id] = client;
@@ -125,6 +136,11 @@ void server_serve(server_t *server) {
 void server_start(server_t *server) {
   // Ignore SIGCHLD to avoid zombie threads
   signal(SIGCHLD, SIG_IGN);
+
+  // Gracefully handle SIGINT
+  signal(SIGINT, server_sigint);
+
+  server->state = ACCEPTING;
 
   // Start a new thread for the server.
   // This thread will be responsible for accepting connections and
@@ -138,13 +154,24 @@ void server_start(server_t *server) {
 int server_unbind(server_t *server) {
   // We need to free the address and then
   // any memory used
-  server->port = 0;
-  int shutdown_status = shutdown(server->socket, SHUT_RDWR);
-  if (shutdown_status == -1) {
-    return shutdown_status;
+  printf("\x1b[33;1mAttempting to unbind socket\x1b[0m\n");
+  server->state = NOT_ACCEPTING;
+
+  // Loop through all open clients and attempt to close their sockets
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    client_t client = server->conns.clients[i];
+    if (client.socket != 0) {
+      printf("\x1b[33;1mAttempting to close socket for client %d:%s\x1b[0m\n",
+             client.client_id, client.client_name);
+      shutdown(client.socket, SHUT_RDWR);
+      // Wait for the client to finish sending data
+      while (recv(client.socket, NULL, 0, 0) != 0)
+        ;
+      printf("\x1b[32;1mSocket closed successfully\x1b[0m\n");
+      close(client.socket);
+    }
   }
-  server->socket = 0;
   free(server);
-  kill(getpid(), SIGTERM);
+  printf("\x1b[32;1mSocket unbound successfully\x1b[0m\n");
   return 0;
 }

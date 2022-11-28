@@ -5,7 +5,13 @@
 
 int main(int argc, char *argv[]) {
   client_t *client = client_init();
-  loop{};
+  char buffer[1024];
+  loop {
+    // Check if we have a connection
+    if (read(client->socket, buffer, 1024) == 0) {
+      break;
+    }
+  }
   client_disconnect(client);
   return 0;
 }
@@ -31,8 +37,13 @@ client_t *client_init() {
     exit(1);
   }
 
-  printf("\x1b[32;1mConnected to server successfully\x1b[0m\n");
+  client->socket = socket_fd;
+  client->addr = server_addr;
 
+  // NOTE: THESE ARE DECIDED BY THE SERVER
+  client->client_id = -1;
+  client->player_type = SPECTATOR;
+  printf("\x1b[32;1mConnected to server successfully\x1b[0m\n");
   return client;
 }
 

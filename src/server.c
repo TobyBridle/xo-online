@@ -172,6 +172,6 @@ int server_unbind(server_t *server) {
     }
   }
   free(server);
-  printf("\x1b[32;1mSocket unbound successfully\x1b[0m\n");
+  printf("\x1b[32;1mServer closed successfully\x1b[0m\n");
   return 0;
 }

@@ -1,6 +1,6 @@
 #include "lib/server.h"
-#include <arpa/inet.h>
-#include <signal.h>
+#include "lib/client.h"
+#include "lib/utils.h"
 
 #define PORT 80
 

@@ -2,6 +2,9 @@
 #define NOUGHTS_CROSSES_SERVER_H
 
 #include "client.h"
+#include "utils.h"
+#include <arpa/inet.h>
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <pthread.h>
 #include <signal.h>

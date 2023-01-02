@@ -22,6 +22,17 @@ struct node {
   struct node *next;
 };
 
+typedef struct LINKEDLIST_T {
+  struct node *head;
+  struct node *tail;
+} LinkedList;
+
+LinkedList *init_list();
+int push_node(LinkedList *list, int value);
+int pop_node(LinkedList *list);
+int remove_node(LinkedList *list, int predicate);
+void free_list(LinkedList *list);
+
 /*
  * STACK
  */
@@ -71,7 +82,7 @@ typedef struct HASHMAP_T {
   Bucket *buckets;
   int bucket_count;
   int used_buckets;
-  struct node
+  LinkedList
       *entry_ids; // We will use this to loop over the entries in the map.
 } HashMap;
 

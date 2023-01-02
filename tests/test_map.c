@@ -8,10 +8,8 @@ TestResult test_types() {
   put(&map, 3, (BucketValue){.c_value = 'H'});
 
   BucketValue ret[] = {get(map, 1), get(map, 3)};
-  if (ret[0].i_value != 3 || ret[1].c_value != 'H') {
-    free_hashmap(&map);
-    return FAILURE;
-  }
+  EXPECT_EQ(ret[0].i_value, 3);
+  EXPECT_EQ(ret[1].c_value, 'H');
   free_hashmap(&map);
   return SUCCESS;
 }
@@ -26,11 +24,10 @@ TestResult test_collisions() {
   int second = get(map, 9).i_value;
   int third = get(map, 11).c_value;
 
-  if (first != 5 || second != 9 || (char)third != 'H') {
-    printf("%d %d %d\n", first, second, (char)third);
-    free_hashmap(&map);
-    return FAILURE;
-  }
+  EXPECT_EQ(first, 5);
+  EXPECT_EQ(second, 9);
+  EXPECT_EQ(third, 'H');
+
   free_hashmap(&map);
   return SUCCESS;
 }

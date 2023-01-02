@@ -1,5 +1,67 @@
 #include "lib/utils.h"
 
+LinkedList *init_list() {
+  LinkedList *list = malloc(sizeof(LinkedList));
+  list->head = list->tail = NULL;
+  return list;
+}
+
+int push_node(LinkedList *list, int value) {
+  struct node *new_node = (struct node *)malloc(sizeof(struct node));
+  new_node->data = value;
+  new_node->next = NULL;
+
+  if (list->head == NULL) {
+    list->head = list->tail = new_node;
+    return 0;
+  } else {
+    list->tail->next = new_node;
+    list->tail = new_node;
+    return 0;
+  }
+}
+
+int pop_node(LinkedList *list) {
+  if (list->head == NULL) {
+    return -1;
+  }
+  struct node *head = list->head;
+  int data = head->data;
+  list->head = head->next;
+  free(head);
+  return data;
+}
+
+int remove_node(LinkedList *list, int predicate) {
+  if (list->head == NULL) {
+    return -1;
+  }
+  struct node *head = list->head;
+  struct node *prev = NULL;
+  while (head != NULL) {
+    if (head->data == predicate) {
+      if (prev == NULL) {
+        list->head = head->next;
+      } else {
+        prev->next = head->next;
+      }
+      free(head);
+      return 0;
+    }
+    prev = head;
+    head = head->next;
+  }
+  return -1;
+}
+
+void free_list(LinkedList *list) {
+  struct node *head = list->head;
+  struct node *next = NULL;
+  while ((pop_node(list)) != -1)
+    ;
+  free(list);
+}
+
 int push(stck_t *stack, int data) {
   // Check if the stack is full
   if (stack->is_full)
@@ -39,94 +101,102 @@ int peek(stck_t *stack) {
 }
 
 HashMap new_hashmap(int map_size) {
-  HashMap map = {.buckets = calloc(map_size, sizeof(Bucket)),
-                 .bucket_count = map_size,
+  HashMap map = {.bucket_count = map_size,
                  .used_buckets = 0,
-                 .entry_ids = NULL};
+                 .buckets = calloc(map_size, sizeof(Bucket)),
+                 .entry_ids = init_list()};
   ZERO_HASHMAP(map);
   return map;
 }
 
 void free_hashmap(HashMap *map) {
-  // Free all linked lists inside buckets
-  // Free the buckets themselves
-  for (int i = 0; i < map->bucket_count; ++i) {
-    if (map->buckets[i].next != NULL) {
-      Bucket *bucket, *next;
-      bucket = (Bucket *)map->buckets[i].next;
-      while (bucket != NULL) {
-        next = (Bucket *)bucket->next;
-        free(bucket);
-        bucket = next;
-      }
-    }
+  int entry_id;
+  while ((entry_id = pop_node(map->entry_ids)) != -1) {
+    remove_value(*map, entry_id);
   }
+
   free(map->buckets);
+  free(map->entry_ids);
 }
 
 void put(HashMap *map, int key, BucketValue value) {
   int hash = HASH(key, map->bucket_count);
-  if (map->buckets[hash].key == NO_VALUE) {
-    map->buckets[hash] = (Bucket){.key = key, .value = value, .next = NULL};
+  Bucket *curr = &map->buckets[hash];
+  if (curr->key == NO_VALUE) {
+    *curr = (Bucket){.key = key, .value = value, .next = NULL};
+    push_node(map->entry_ids, key);
     map->used_buckets++;
+    return;
+  }
+
+  while (curr->next != NULL && curr->key != key)
+    curr = curr->next;
+
+  if (curr->key == key) {
+    curr->value = value;
   } else {
-    // TODO: HANDLE COLLISIONS BETTER!
-    Bucket *current = &map->buckets[hash];
-    while (current->next != NULL) {
-      current = current->next;
-    }
-    Bucket *new_bucket = malloc(sizeof(Bucket));
-    new_bucket->key = key;
-    new_bucket->value = value;
-    new_bucket->next = NULL;
-    current->next = new_bucket;
+    Bucket *new = malloc(sizeof(Bucket));
+    *new = (Bucket){.key = key, .value = value, .next = NULL};
+    curr->next = new;
+    push_node(map->entry_ids, key);
+    return;
   }
 }
 
 BucketValue get(HashMap map, int key) {
   int hash = HASH(key, map.bucket_count);
-  if (map.buckets[hash].key == NO_VALUE) {
+  Bucket *curr = &map.buckets[hash];
+  if (curr->key == NO_VALUE)
+    return (BucketValue){.err = -1};
+
+  while (curr != NULL && curr->key != key)
+    curr = curr->next;
+
+  if (curr == NULL) {
     return (BucketValue){.err = -1};
   } else {
-    Bucket *current = &map.buckets[hash];
-    while (current != NULL) {
-      if (current->key == key) {
-        return current->value;
-      }
-      current = (Bucket *)current->next;
-    }
-    return (BucketValue){.err = -1};
+    return curr->value;
   }
 }
 
 void remove_value(HashMap map, int key) {
   int hash = HASH(key, map.bucket_count);
-  if (map.buckets[hash].key == NO_VALUE) {
+  Bucket *curr = &map.buckets[hash];
+  // If the bucket is empty
+  if (curr->key == NO_VALUE)
     return;
-  } else {
-    // Find the bucket to remove
-    Bucket *current = &map.buckets[hash];
-    Bucket *prev = NULL;
-    while (current != NULL) {
-      if (current->key == key) {
-        if (prev == NULL && current->next == NULL) {
-          // Remove the first bucket
-          map.buckets[hash] = (Bucket){.key = NO_VALUE, .value = {.err = -1}};
-        } else if (prev == NULL && current->next != NULL) {
-          map.buckets[hash] = *current->next;
-          return;
-        } else {
-          prev->next = current->next;
-          free(current);
-        }
-        return;
-      }
-      prev = current;
-      current = (Bucket *)current->next;
-    }
-    // free(current);
-    // free(prev);
+
+  // If the bucket is the only one in the chain
+  if (curr->next == NULL) {
+    *curr = (Bucket){
+        .key = NO_VALUE, .value = (BucketValue){.err = -1}, .next = NULL};
+    remove_node(map.entry_ids, key);
+    return;
   }
+
+  // If the bucket is the first in the chain
+  if (curr->key == key) {
+    Bucket *next = curr->next;
+    *curr = *next;
+    free(next);
+    remove_node(map.entry_ids, key);
+    return;
+  }
+
+  // If the bucket is in the middle of the chain
+  Bucket *prev = curr;
+  curr = curr->next;
+  while (curr != NULL && curr->key != key) {
+    prev = curr;
+    curr = curr->next;
+  }
+
+  if (curr == NULL)
+    return;
+
+  prev->next = curr->next;
+  free(curr);
+  remove_node(map.entry_ids, key);
 }
 
 void handle_sock_error(int err) {

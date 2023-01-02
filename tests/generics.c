@@ -37,15 +37,20 @@ void run_suite(Suite suite) {
 
 void run_test(Test test) {
   TestResult result = test.test();
-  if (result == FAILURE) {
-    if (!test.is_suite) {
+  if (!test.is_suite) {
+    if (result == FAILURE) {
       fprintf(stderr, "\x1b[31;1mTest `%s` failed!\x1b[0;0m\n", test.desc);
     } else {
-      fprintf(stderr, "\x1b[31;1mTest `%s` with ID (%d) failed!\x1b[0;0m\n",
-              test.desc, test.id);
+      printf("\x1b[32;1mTest `%s` succeeded!\x1b[0;0m\n", test.desc);
     }
   } else {
-    printf("\x1b[32;1mTest `%s` succeeded!\x1b[0;0m\n", test.desc);
+    if (result == FAILURE) {
+      fprintf(stderr, "\x1b[31;1mTest `%s` with ID (%d) failed!\x1b[0;0m\n",
+              test.desc, test.id);
+    } else {
+      fprintf(stderr, "\x1b[32;1mTest `%s` with ID (%d) succeeded!\x1b[0;0m\n",
+              test.desc, test.id);
+    }
+    free(test.desc);
   }
-  free(test.desc);
 }

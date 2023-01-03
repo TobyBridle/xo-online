@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
@@ -23,18 +24,12 @@ const int MAX_CLIENTS = 1000;
 
 enum SERVER_STATE { ACCEPTING, NOT_ACCEPTING };
 
-typedef struct CLIENTS_T {
-  int count; // We use this to set the client_id of our players
-  int max_clients;
-  client_t clients[MAX_CLIENTS]; // Static array of size MAX_CLIENTS
-} clients_t;
-
 typedef struct {
   int socket;
   short port;
-  /* int pipefd[2]; */
   enum SERVER_STATE state;
-  clients_t conns;
+  HashMap clients;
+  stck_t *available_ids;
 } server_t;
 
 /* ------------------------------------------------------------------------ */

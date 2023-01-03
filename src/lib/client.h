@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/errno.h>
 #include <sys/signal.h>
 #include <sys/types.h>
@@ -31,4 +32,14 @@ typedef struct {
 
 client_t *client_init();
 void client_disconnect(client_t *client);
+
+#ifndef HANDLE_SOCK_ERROR_FN
+#define HANDLE_SOCK_ERROR_FN
+/**
+ * @brief Handle the errno provided by the socket failures
+ *
+ * @param err
+ */
+void handle_sock_error(int err);
+#endif
 #endif

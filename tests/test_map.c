@@ -1,15 +1,32 @@
 #include "../src/lib/utils.h"
+#include "../src/lib/server.h"
 #include "generics.h"
 #include <stdio.h>
 
 TestResult test_types() {
-  HashMap map = new_hashmap(3);
+  HashMap map = new_hashmap(6);
   put(&map, 1, (BucketValue){.i_value = 3});
   put(&map, 3, (BucketValue){.c_value = 'H'});
+  
+  client_t* client = malloc(sizeof(client_t));
+  memset(client, 0, sizeof(client_t));
+  client->client_id = 3;
+  
+  client_t* client2 = malloc(sizeof(client_t));
+  memset(client2, 0, sizeof(client_t));
+  client2->client_id = 1;
 
-  BucketValue ret[] = {get(map, 1), get(map, 3)};
+  put(&map, 5, (BucketValue){.client = client});
+  put(&map, 6, (BucketValue){.client = client2});
+
+  BucketValue ret[] = {get(map, 1), get(map, 3), get(map, 5), get(map, 6)};
   EXPECT_EQ(ret[0].i_value, 3);
   EXPECT_EQ(ret[1].c_value, 'H');
+  EXPECT_EQ(ret[2].client->client_id, 3);
+  EXPECT_EQ(ret[3].client->client_id, 1);
+
+  free(client);
+  free(client2);
   free_hashmap(&map);
   return SUCCESS;
 }

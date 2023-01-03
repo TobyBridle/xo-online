@@ -9,3 +9,4 @@ threads for handling seperate games and server control will be implemented.
 <b>May be useful..</b>
 
 - [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110)
+- [Beej's Guide for Network Programming](https://beej.us/guide/bgnet/html/split/ip-addresses-structs-and-data-munging.html)

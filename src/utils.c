@@ -274,3 +274,188 @@ void handle_sock_error(int err) {
     break;
   }
 }
+
+char *serialize_int(int i) {
+  // 0x01 0x04 0x00 0x00 0x00 0x00
+  // ---- ---- ---- ---- ---- ----
+  // 6 Bytes + NULL Terminator
+  char *buf = malloc(7);
+  buf[0] = 0x01;
+  buf[1] = 0x04;
+  buf[2] = (i >> 24) & 0xFF;
+  buf[3] = (i >> 16) & 0xFF;
+  buf[4] = (i >> 8) & 0xFF;
+  buf[5] = i & 0xFF;
+  buf[6] = '\0';
+  return buf;
+}
+
+int deserialize_int(char *buf) {
+  int i = 0;
+  i |= buf[2] << 24;
+  i |= buf[3] << 16;
+  i |= buf[4] << 8;
+  i |= buf[5];
+  return i;
+}
+
+char *serialize_bool(BOOL b) {
+  // 0x01 0x01 0x00
+  // ---- ---- ----
+  // 3 Bytes + NULL Terminator
+  char *buf = malloc(4);
+  buf[0] = 0x01;
+  buf[1] = 0x01;
+  buf[2] = b ? 0x01 : 0x00;
+  buf[3] = '\0';
+  return buf;
+}
+
+BOOL deserialize_bool(char *buf) { return buf[2] == 0x01; }
+
+char *serialize_string(char *str) {
+  // 0x03 0x02 0x00 0x00
+  // ---- ---- ---- ----
+  // 4 Bytes + NULL Terminator
+  // The 2nd byte will be the length of characters + 1
+  // as the last byte would be the NULL terminator
+
+  int len = strlen(str) + 1;
+
+  if (len > 255) {
+    fprintf(stderr, "\x1b[31;1mString is too long to be serialized\x1b[0m\n");
+    return NULL;
+  } else if (len == 1) {
+    fprintf(stderr, "\x1b[31;1mString is empty\x1b[0m\n");
+    return NULL;
+  }
+
+  char *buf = calloc(len + 2, 1);
+  buf[0] = 0x03;
+  buf[1] = len;
+  memcpy(buf + 2, str, len);
+  return buf;
+}
+
+char *deserialize_string(char *buf) {
+
+  if (buf[0] != 0x03) {
+    fprintf(stderr, "\x1b[31;1mInvalid string\x1b[0m\n");
+    return NULL;
+  } else if (buf[1] == 0x00) {
+    fprintf(stderr, "\x1b[31;1mString is empty\x1b[0m\n");
+    return NULL;
+  }
+
+  int len = buf[1];
+
+  char *str = calloc(len, 1);
+  memcpy(str, buf + 2, len);
+  return str;
+}
+
+char *serialize_enum(int e) {
+  // 0x01 0x01 0x00
+  // ---- ---- ----
+  // 3 Bytes + NULL Terminator
+  char *buf = malloc(4);
+  buf[0] = 0x01;
+  buf[1] = 0x01;
+  buf[2] = e;
+  buf[3] = '\0';
+  return buf;
+}
+
+int deserialize_enum(char *buf) { return buf[2]; }
+
+char *serialize_client(client_t *client) {
+  // Fields of client_t:
+  // int socket;
+  // int client_id;
+  // char *client_name;
+  // struct sockaddr_in addr;
+  // enum {
+  //   NOUGHT,
+  //   CROSS,
+  //   SPECTATOR
+  // } player_type;
+
+  // The length of fields (when serialized) are:
+  // Note: This excludes the NULL terminator
+  // int socket: 6
+  // int client_id: 6
+  // char *client_name: strlen(client_name) + 2
+  // struct sockaddr_in addr: 16
+  // enum player_type: 3
+
+  int len = 6 + 6 + strlen(client->client_name) + 2 + 16 + 9;
+  char *buf = calloc(len + 2, 1);
+
+  // Setting serialized bytes info
+  buf[0] = 0x04;
+  buf[1] = len;
+
+  // Serializing fields
+  memcpy(buf + 2, serialize_int(client->socket), 6);
+  memcpy(buf + 8, serialize_int(client->client_id), 6);
+  memcpy(buf + 14, serialize_string(client->client_name),
+         strlen(client->client_name) + 2);
+
+  // We need to serialize the struct sockaddr_in addr
+  // Fields:
+  // .sin_family (enum),
+  // .sin_addr (struct in_addr),
+  // .sin_len (unsigned char),
+  // .sin_port (unsigned short),
+
+  // Serializing the sin_family using serialize_enum
+  memcpy(buf + 15 + strlen(client->client_name) + 2,
+         serialize_enum(client->addr.sin_family), 3);
+
+  // Serializing the sin_addr using serialize_int
+  memcpy(buf + 18 + strlen(client->client_name) + 2,
+         serialize_int(client->addr.sin_addr.s_addr), 6);
+
+  // Serializing the sin_len using serialize_int
+  memcpy(buf + 24 + strlen(client->client_name) + 2,
+         serialize_int(client->addr.sin_len), 6);
+
+  // Serializing the sin_port using serialize_int
+  memcpy(buf + 30 + strlen(client->client_name) + 2,
+         serialize_int(client->addr.sin_port), 6);
+
+  // Serializing the player_type using serialize_enum
+  memcpy(buf + 36 + strlen(client->client_name) + 2,
+         serialize_enum(client->player_type), 3);
+  return buf;
+}
+
+client_t *deserialize_client(char *buf) {
+  // Fields of client_t:
+  // int socket;
+  // int client_id;
+  // char *client_name;
+  // struct sockaddr_in addr;
+  // enum {
+  //   NOUGHT,
+  //   CROSS,
+  //   SPECTATOR
+  // } player_type;
+
+  client_t *client = malloc(sizeof(client_t));
+  client->socket = deserialize_int(buf + 2);
+  client->client_id = deserialize_int(buf + 8);
+  client->client_name = deserialize_string(buf + 14);
+  client->addr.sin_family =
+      deserialize_enum(buf + 15 + strlen(client->client_name) + 2);
+  client->addr.sin_addr.s_addr =
+      deserialize_int(buf + 18 + strlen(client->client_name) + 2);
+  client->addr.sin_len =
+      deserialize_int(buf + 24 + strlen(client->client_name) + 2);
+  client->addr.sin_port =
+      deserialize_int(buf + 30 + strlen(client->client_name) + 2);
+  client->player_type =
+      deserialize_enum(buf + 36 + strlen(client->client_name) + 2);
+
+  return client;
+}

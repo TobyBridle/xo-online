@@ -62,16 +62,29 @@ void free_list(LinkedList *list) {
   free(list);
 }
 
+stck_t *init_stack(int max_size) {
+  stck_t *stack = malloc(sizeof(stck_t));
+  memset(stack, 0, sizeof(stck_t));
+  stack->head = NULL;
+  stack->max = max_size;
+
+  return stack;
+}
+
 int push(stck_t *stack, int data) {
   // Check if the stack is full
   if (stack->is_full)
     return -1;
+  if (stack->used == stack->max) {
+    stack->is_full = TRUE;
+    return -1;
+  }
 
   struct node *new_node = (struct node *)malloc(sizeof(struct node));
   new_node->data = data;
   new_node->next = stack->head;
   stack->head = new_node;
-  stack->used--;
+  stack->used++;
   return 0;
 }
 
@@ -91,13 +104,19 @@ int pop(stck_t *stack) {
   stack->head = head->next;
   free(head);
 
-  stack->used++;
+  stack->used--;
   return data;
 }
 int peek(stck_t *stack) {
   if (stack->head == NULL)
     return -1;
   return stack->head->data;
+}
+
+void free_stack(stck_t *stack) {
+  while (pop(stack) != -1)
+    ;
+  free(stack);
 }
 
 HashMap new_hashmap(int map_size) {

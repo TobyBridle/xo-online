@@ -40,12 +40,15 @@ typedef struct {
   struct node *head;
   BOOL is_full;
   int used;
+  int max;
 } stck_t; // Unfortunately need to use stck_t instead of stack_t as it is
           // already defined
 
+stck_t *init_stack(int max_size);
 int push(stck_t *stack, int data);
 int pop(stck_t *stack);
 int peek(stck_t *stack);
+void free_stack(stck_t *stack);
 
 /*
  * HashMap
@@ -93,10 +96,13 @@ void put(HashMap *map, int key, BucketValue value);
 BucketValue get(HashMap map, int key);
 void remove_value(HashMap map, int key);
 
+#ifndef HANDLE_SOCK_ERROR_FN
+#define HANDLE_SOCK_ERROR_FN
 /**
  * @brief Handle the errno provided by the socket failures
  *
  * @param err
  */
 void handle_sock_error(int err);
+#endif
 #endif

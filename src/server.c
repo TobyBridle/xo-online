@@ -14,10 +14,14 @@ void server_sigint(int sig) {
   server_interrupted = 1;
 }
 
-int main(int argc, char *argv[]) {
+int main() {
   // Initialize the server
   server_t *server = server_init(PORT);
   int listen_status = server_listen(server);
+  if (listen_status != 0) {
+    handle_sock_error(errno);
+    exit(1);
+  }
 
   // Start the server and wait for connections
   server_start(server);

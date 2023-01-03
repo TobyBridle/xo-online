@@ -31,7 +31,7 @@ TestResult test_pop() {
   return SUCCESS;
 }
 
-int main(int argc, char *argv[]) {
+int main() {
   Test *tests = (Test[]){
       new_test("Pushing Values", &test_push),
       new_test("Popping Values", &test_pop),

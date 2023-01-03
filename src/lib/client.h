@@ -1,5 +1,6 @@
 #ifndef NOUGHTS_CROSSES_CLIENT_H
 #define NOUGHTS_CROSSES_CLIENT_H
+#include "utils.h"
 #include <netinet/in.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -12,6 +13,8 @@
 
 #define TCP 0
 
+#ifndef NOUGHTS_CROSSES_CLIENT_T
+#define NOUGHTS_CROSSES_CLIENT_T
 typedef struct {
   int socket;
   int client_id; // This corresponds to the index in the server->conns->clients
@@ -27,6 +30,7 @@ typedef struct {
   } player_type; // Spectator by default, so that the user cannot interact with
                  // any games
 } client_t;
+#endif
 
 /* ------------------------------------------------------------------------ */
 

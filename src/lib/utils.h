@@ -12,10 +12,31 @@
 #define BOOL int
 #endif
 
+#ifndef NOUGHTS_CROSSES_CLIENT_T
+#define NOUGHTS_CROSSES_CLIENT_T
+#include <netinet/in.h>
+typedef struct {
+  int socket;
+  int client_id; // This corresponds to the index in the server->conns->clients
+                 // array and is -1 if the client has not yet been registered by
+                 // the server
+  char *client_name; // This is the display name of the user, which we will show
+                     // other players
+  struct sockaddr_in addr;
+  enum {
+    NOUGHT,
+    CROSS,
+    SPECTATOR
+  } player_type; // Spectator by default, so that the user cannot interact with
+                 // any games
+} client_t;
+#endif
+
 #define NOUGHTS_CROSSES_UTILS_H
-#include "client.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 struct node {
   int data;
@@ -68,7 +89,7 @@ void free_stack(stck_t *stack);
     }
 
 typedef union {
-  uint i_value;
+  unsigned int i_value;
   char c_value;
   client_t *client;
   int err;

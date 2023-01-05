@@ -5,7 +5,7 @@ CFLAGS=-Wall -Wextra -g $(INCDIRS) $(OPTS)
 
 TESTS_DIR=./tests
 
-all: server tests
+all: server client tests
 
 server: bin/server.o bin/utils.o
 	$(CC) $(CFLAGS) bin/utils.o bin/server.o -o bin/server

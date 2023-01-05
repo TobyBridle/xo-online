@@ -2,6 +2,7 @@
 #define NOUGHTS_CROSSES_CLIENT_H
 #include "utils.h"
 #include <netinet/in.h>
+#include <poll.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,6 +10,7 @@
 #include <sys/errno.h>
 #include <sys/signal.h>
 #include <sys/types.h>
+#include <termios.h>
 #include <unistd.h>
 
 #define TCP 0
@@ -31,6 +33,18 @@ typedef struct {
                  // any games
 } client_t;
 #endif
+
+/* ------------------------------------------------------------------------ */
+
+#ifndef QUIT_KEY
+#define QUIT_KEY 'q'
+#endif
+
+static struct termios restore;
+static struct termios noughts_crosses_term;
+
+void enable_raw_term();
+void disable_raw_term();
 
 /* ------------------------------------------------------------------------ */
 

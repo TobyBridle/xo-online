@@ -25,21 +25,24 @@ typedef struct SUITE_T {
   Test *tests;
 } Suite;
 
-#define EXPECT(e) \
-  if (!(e)) {     \
-    return FAILURE; \
+#define EXPECT(e)                                                              \
+  if (!(e)) {                                                                  \
+    fprintf(stderr, "\x1b[31;1mFAILURE at %s:%d\x1b[0;0m\n", __FILE__,         \
+            __LINE__);                                                         \
+    return FAILURE;                                                            \
   }
 
-#define EXPECT_EQ(a, b) \
-  if ((a) != (b)) {     \
-    return FAILURE; \
+#define EXPECT_EQ(a, b)                                                        \
+  if ((a) != (b)) {                                                            \
+    fprintf(stderr, "\x1b[31;1mFAILURE at %s:%d\x1b[0;0m\n", __FILE__,         \
+            __LINE__);                                                         \
+    return FAILURE;                                                            \
   }
 
-#define EXPECT_NEQ(a, b) \
-  if ((a) == (b)) {      \
-    return FAILURE; \
+#define EXPECT_NEQ(a, b)                                                       \
+  if ((a) == (b)) {                                                            \
+    return FAILURE;                                                            \
   }
-
 
 Suite new_suite(char *test_name, Test *_tests);
 Test new_test(char *test_desc, TestResult(_test)(void));

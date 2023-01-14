@@ -52,7 +52,7 @@ int main() {
       new_test("Popping Values", &test_pop),
       new_test("Peeking Values", &test_peek),
   };
-  Suite my_suite = new_suite("Stack Tests", tests);
+  Suite my_suite = new_suite("Stack Tests", tests, 3);
   run_suite(my_suite);
   return 0;
 }

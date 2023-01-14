@@ -36,6 +36,7 @@ typedef struct SUITE_T {
   if ((a) != (b)) {                                                            \
     fprintf(stderr, "\x1b[31;1mFAILURE at %s:%d\x1b[0;0m\n", __FILE__,         \
             __LINE__);                                                         \
+    fprintf(stderr, "\x1b[1mExpected %d - got %d\x1b[0;0m\n", b, a);           \
     return FAILURE;                                                            \
   }
 
@@ -44,7 +45,7 @@ typedef struct SUITE_T {
     return FAILURE;                                                            \
   }
 
-Suite new_suite(char *test_name, Test *_tests);
+Suite new_suite(char *test_name, Test *_tests, uint16_t test_count);
 Test new_test(char *test_desc, TestResult(_test)(void));
 
 void run_suite(Suite suite);

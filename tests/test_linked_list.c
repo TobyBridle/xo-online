@@ -53,7 +53,6 @@ TestResult test_remove() {
 TestResult test_peek() {
   LinkedList *list = init_list();
   for (int i = 0; i < 1000; ++i) {
-    printf("Pushing %d\n", i);
     push_node(list, i);
   }
   for (int i = 0; i < 1000; ++i) {
@@ -124,11 +123,23 @@ TestResult test_push_pop_remove() {
   return SUCCESS;
 }
 
+TestResult test_push_at() {
+  LinkedList *list = init_list();
+  push_node(list, 1);
+  push_node(list, 2);
+  push_node_at(list, 3, 1);
+  EXPECT_EQ(list->head->data, 1);
+  EXPECT_EQ(list->head->next->data, 3);
+  EXPECT_EQ(list->tail->data, 2);
+  push_node_at(list, 4, 2);
+  EXPECT_EQ(list->head->next->next->data, 4);
+  EXPECT_EQ(list->tail->data, 2);
+  EXPECT_EQ(list->head->next->data, 3);
+
+  return SUCCESS;
+}
+
 int main() {
-  Test *tests = (Test[]){
-      new_test("Test Node Push", &test_push),
-      new_test("Test Node Pop", &test_pop),
-      new_test("Test Node Remove (By Value)", &test_remove),
   Test tests[] = {
       new_test("Test Push", test_push),
       new_test("Test Pop", test_pop),
@@ -136,8 +147,9 @@ int main() {
       new_test("Test Peek", test_peek),
       new_test("Test Push Pop", test_push_pop),
       new_test("Test Push Pop Remove", test_push_pop_remove),
+      new_test("Test Push (At Index)", test_push_at),
   };
-  Suite my_suite = new_suite("Linked List Tests", tests);
+  Suite my_suite = new_suite("Linked List Tests", tests, 7);
   run_suite(my_suite);
   return 0;
 }

@@ -1,15 +1,13 @@
 #include "./generics.h"
 
-Suite new_suite(char *test_name, Test *tests) {
+Suite new_suite(char *test_name, Test *tests, u_int16_t test_count) {
   Suite suite;
   char *name = calloc(strlen(test_name) + 1, sizeof(char));
   strcpy(name, test_name);
 
-  u_int16_t test_count = 0;
-  while (tests[test_count].test != NULL) {
-    tests[test_count].id = test_count + 1;
-    tests[test_count].is_suite = 1;
-    test_count++;
+  for (int i = 0; i < test_count; ++i) {
+    tests[i].id = i + 1;
+    tests[i].is_suite = 1;
   }
 
   suite = (Suite){name, test_count, tests};
@@ -17,11 +15,10 @@ Suite new_suite(char *test_name, Test *tests) {
 }
 
 Test new_test(char *test_desc, TestResult(_test)()) {
-  Test test;
   char *desc = calloc(strlen(test_desc) + 1, sizeof(char));
   strcpy(desc, test_desc);
 
-  test = (Test){desc, .id = 0, .test = _test, .is_suite = 0};
+  Test test = (Test){.desc = desc, .id = 0, .test = _test, .is_suite = 0};
   return test;
 }
 

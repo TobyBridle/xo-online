@@ -11,7 +11,6 @@ TestResult test_types() {
   client_t *client = malloc(sizeof(client_t));
   memset(client, 0, sizeof(client_t));
   client->client_id = 3;
-  
 
   client_t *client2 = malloc(sizeof(client_t));
   memset(client2, 0, sizeof(client_t));
@@ -101,7 +100,7 @@ int main() {
                &test_remove_without_collisions),
       new_test("Removing Values (COLLISIONS)", &test_remove_with_collisions),
   };
-  Suite my_suite = new_suite("HashMap Tests", tests);
+  Suite my_suite = new_suite("HashMap Tests", tests, 4);
   run_suite(my_suite);
   return 0;
 }

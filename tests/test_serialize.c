@@ -50,9 +50,9 @@ TestResult test_client_serialize() {
   EXPECT_EQ(deserialized->addr.sin_family, AF_INET);
   EXPECT_EQ(deserialized->addr.sin_port, htons(5000));
 
-  free(serialized);
   free(deserialized->client_name);
   free(deserialized);
+  free(serialized);
   free(client);
   return SUCCESS;
 }
@@ -64,7 +64,7 @@ int main() {
       new_test("String Serialization", &test_string_serialize),
       new_test("Client Serialization", &test_client_serialize),
   };
-  Suite my_suite = new_suite("HashMap Tests", tests);
+  Suite my_suite = new_suite("Serialization Tests", tests, 4);
   run_suite(my_suite);
   return 0;
 }

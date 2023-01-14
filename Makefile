@@ -1,7 +1,7 @@
 CC=gcc
 INCDIRS=-I./src/lib -I./src/ -I./bin
 OPT=-O0
-# CFLAGS=-Wall -Wextra -g -fsanitize=address $(INCDIRS) $(OPT)
+CFLAGS=-Wall -Wextra -g -DDEBUG -fsanitize=address $(INCDIRS) $(OPT)
 CFLAGS=-Wall -Wextra -g $(INCDIRS) $(OPT)
 TESTS_DIR=./tests
 

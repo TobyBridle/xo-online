@@ -160,16 +160,27 @@ void server_serve(server_t *server) {
     // have been any disconnects After we have done this, we can begin
     // handling connections.
 
+    struct node entry_id;
+    struct node *head = server->clients.entry_ids->head;
+    // Pointer to next entry id
+    struct node **next_entry_id = NULL;
     BucketValue ret;
     client_t *client;
-    while (entry_ids != NULL) {
-      int client_id = entry_ids->data;
+    while (head != NULL) {
+      entry_id = *head;
+      if (entry_id.next == NULL) {
+        next_entry_id = NULL;
+      } else {
+        next_entry_id = &entry_id.next;
+      }
+      int client_id = entry_id.data;
       ret = get(server->clients, client_id);
       if (ret.err == -1) {
-        entry_ids = entry_ids->next;
+        head = entry_id.next;
         continue;
       }
       client = ret.client;
+
       // Check if the client has disconnected
       char buf[1] = {0};
       int recv_status = recv(client->socket, buf, 1, MSG_PEEK);
@@ -189,9 +200,11 @@ void server_serve(server_t *server) {
         remove_value(&server->clients, client_id);
       }
 
-      if (entry_ids != NULL)
-        entry_ids = entry_ids->next;
-
+      // Set memory location of entry_id to the next entry id
+      if (next_entry_id == &entry_id.next)
+        head = entry_id.next;
+      else
+        head = NULL;
     }
 
     if (poll(fds, 1, 100) > 0) {
@@ -206,6 +219,7 @@ void server_serve(server_t *server) {
         char *client_id = calloc(length + 1, sizeof(char));
         sprintf(client_id, "%d", client.client_id);
         send(client.socket, client_id, length + 1, 0);
+
       } else if (fds[0].revents & POLLERR) {
         printf("\x1b[31;1mError occurred\x1b[0m\n");
       }

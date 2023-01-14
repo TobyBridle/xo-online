@@ -92,6 +92,75 @@ TestResult test_remove_with_collisions() {
   return SUCCESS;
 }
 
+TestResult test_entry_ids_without_collisions() {
+  HashMap map = new_hashmap(5);
+  put(&map, 1, (BucketValue){.i_value = 1});
+  put(&map, 2, (BucketValue){.i_value = 2});
+  put(&map, 3, (BucketValue){.i_value = 3});
+  put(&map, 4, (BucketValue){.i_value = 4});
+  put(&map, 5, (BucketValue){.i_value = 5});
+
+  EXPECT_EQ(map.entry_ids->head->data, 1);
+  EXPECT_EQ(map.entry_ids->head->next->data, 2);
+  EXPECT_EQ(map.entry_ids->head->next->next->data, 3);
+  EXPECT_EQ(map.entry_ids->head->next->next->next->data, 4);
+  EXPECT_EQ(map.entry_ids->head->next->next->next->next->data, 5);
+
+  remove_value(&map, 2);
+  EXPECT_EQ(map.entry_ids->head->data, 1);
+  EXPECT_EQ(map.entry_ids->head->next->data, 3);
+  EXPECT_EQ(map.entry_ids->head->next->next->data, 4);
+  EXPECT_EQ(map.entry_ids->head->next->next->next->data, 5);
+
+  remove_value(&map, 5);
+  EXPECT_EQ(map.entry_ids->head->data, 1);
+  EXPECT_EQ(map.entry_ids->head->next->data, 3);
+  EXPECT_EQ(map.entry_ids->head->next->next->data, 4);
+
+  remove_value(&map, 1);
+  EXPECT_EQ(map.entry_ids->head->data, 3);
+  EXPECT_EQ(map.entry_ids->head->next->data, 4);
+
+  remove_value(&map, 4);
+  EXPECT_EQ(map.entry_ids->head->data, 3);
+
+  free_hashmap(&map);
+
+  map = new_hashmap(5);
+  for (int i = 5; i > 0; i--) {
+    put(&map, i, (BucketValue){.i_value = i});
+  }
+
+  EXPECT_EQ(map.entry_ids->head->data, 1);
+  EXPECT_EQ(map.entry_ids->head->next->data, 2);
+  EXPECT_EQ(map.entry_ids->head->next->next->data, 3);
+  EXPECT_EQ(map.entry_ids->head->next->next->next->data, 4);
+  EXPECT_EQ(map.entry_ids->head->next->next->next->next->data, 5);
+
+  free_hashmap(&map);
+  return SUCCESS;
+}
+
+TestResult test_entry_ids_with_collisions() {
+  HashMap map = new_hashmap(5);
+  put(&map, 1, (BucketValue){.i_value = 1});
+  put(&map, 6, (BucketValue){.i_value = 6});
+  EXPECT_EQ(map.entry_ids->head->data, 1);
+  EXPECT_EQ(map.entry_ids->tail->data, 6);
+
+  remove_value(&map, 6);
+  EXPECT_EQ(map.entry_ids->tail->data, 1);
+  EXPECT_EQ(map.entry_ids->head->data, 1);
+
+  put(&map, 6, (BucketValue){.i_value = 6});
+  remove_value(&map, 1);
+
+  EXPECT_EQ(map.entry_ids->head->data, map.entry_ids->tail->data);
+
+  free_hashmap(&map);
+  return SUCCESS;
+}
+
 int main() {
   Test *tests = (Test[]){
       new_test("Types", &test_types),
@@ -99,8 +168,11 @@ int main() {
       new_test("Removing Values (NO COLLISIONS)",
                &test_remove_without_collisions),
       new_test("Removing Values (COLLISIONS)", &test_remove_with_collisions),
+      new_test("Test Entry IDs (NO COLLISIONS)",
+               &test_entry_ids_without_collisions),
+      new_test("Test Entry IDs (COLLISIONS)", &test_entry_ids_with_collisions),
   };
-  Suite my_suite = new_suite("HashMap Tests", tests, 4);
+  Suite my_suite = new_suite("HashMap Tests", tests, 6);
   run_suite(my_suite);
   return 0;
 }

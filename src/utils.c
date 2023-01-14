@@ -149,17 +149,19 @@ int pop(stck_t *stack) {
   if (peek(stack) == -1) {
     return -1;
 
-  struct node *top = stack->top;
-  int data = stack->top->data;
-  stack->top = top->next;
+    struct node *top = stack->top;
+    int data = stack->top->data;
+    stack->top = top->next;
 
-  free(top);
-  top = NULL;
-  stack->used--;
+    free(top);
+    top = NULL;
+    stack->used--;
 
-  if (stack->used == stack->max - 1)
-    stack->is_full = 0;
-  return data;
+    if (stack->used == stack->max - 1)
+      stack->is_full = 0;
+    return data;
+  }
+  return -1;
 }
 
 int peek(stck_t *stack) {

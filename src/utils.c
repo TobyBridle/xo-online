@@ -60,7 +60,7 @@ int push_node_at(LinkedList *list, int value, int index) {
       new_node->next = curr;
       list->head = new_node;
       return 0;
-    } else if (index == iters + 1) {
+    } else if (index == iters + 1 || curr == NULL) {
       new_node->next = curr;
       prev->next = list->tail = new_node;
       return 0;

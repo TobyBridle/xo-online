@@ -4,13 +4,13 @@
 TestResult test_push() {
   stck_t *stack = init_stack(5);
   push(stack, 1);
-  EXPECT(peek(stack) == 1);
+  EXPECT_EQ(peek(stack), 1);
   for (int i = 2; i <= 5; ++i) {
     push(stack, i);
   }
-  EXPECT(peek(stack) == 5);
+  EXPECT_EQ(peek(stack), 5);
   push(stack, 6);
-  EXPECT(peek(stack) == 5);
+  EXPECT_EQ(peek(stack), 5);
 
   free_stack(stack);
   return SUCCESS;
@@ -22,11 +22,11 @@ TestResult test_pop() {
     push(stack, i);
   }
   for (int i = 100; i >= 1; i--) {
-    EXPECT(pop(stack) == i);
+    EXPECT_EQ(pop(stack), i);
   }
-  EXPECT(peek(stack) == -1);
-  EXPECT(pop(stack) == -1);
-  EXPECT(peek(stack) == -1);
+  EXPECT_EQ(peek(stack), -1);
+  EXPECT_EQ(pop(stack), -1);
+  EXPECT_EQ(peek(stack), -1);
 
   free_stack(stack);
   return SUCCESS;
@@ -38,9 +38,9 @@ TestResult test_peek() {
     push(stack, i);
   }
   for (int i = 100; i >= 1; i--) {
-    EXPECT(peek(stack) == 100);
+    EXPECT_EQ(peek(stack), 100);
   }
-  EXPECT(pop(stack) == 100);
+  EXPECT_EQ(pop(stack), 100);
 
   free_stack(stack);
   return SUCCESS;

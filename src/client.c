@@ -21,15 +21,14 @@ int main() {
 
     int poll_status = poll(fds, 1, 100);
     if (poll_status > 0) {
+      int read_status = recv(client->socket, buffer, 1024, 0);
       if (fds[0].revents & POLL_IN) {
         // We have received a message
-        int read_status = recv(client->socket, buffer, 1024, 0);
         if (read_status == -1) {
           disable_raw_term();
           handle_sock_error(errno);
           exit(1);
-        }
-        if (read_status == 0) {
+        } else if (read_status == 0) {
           // The server has disconnected
           printf("\x1b[31;1mServer has disconnected\x1b[0m\r\n");
           break;
@@ -40,8 +39,8 @@ int main() {
           /* client_id = deserialize_int(buffer); */
           client_id = 3;
 
-          printf("\x1b[32;1mConnected to server as client %d\x1b[0m\r\n",
-                 deserialize_int(buffer));
+          printf("\x1b[32;1mConnected to server as client %s\x1b[0m\r\n",
+                 buffer);
         }
       } else if (fds[0].revents & POLL_ERR) {
         printf("\x1b[31;1mError occurred\x1b[0m\r\n");
@@ -56,8 +55,6 @@ int main() {
         fds[0].fd = -1; // NOTE: This will prevent polls from occuring and will
                         // break our loop
         break;
-      default:
-        send(client->socket, (char *){&c}, 2, 0);
       }
     }
   }

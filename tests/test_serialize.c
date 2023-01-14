@@ -51,6 +51,7 @@ TestResult test_client_serialize() {
   EXPECT_EQ(deserialized->addr.sin_port, htons(5000));
 
   free(serialized);
+  free(deserialized->client_name);
   free(deserialized);
   free(client);
   return SUCCESS;

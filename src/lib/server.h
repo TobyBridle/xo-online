@@ -29,7 +29,6 @@ typedef struct {
   short port;
   enum SERVER_STATE state;
   HashMap clients;
-  stck_t *available_ids;
 } server_t;
 
 /* ------------------------------------------------------------------------ */

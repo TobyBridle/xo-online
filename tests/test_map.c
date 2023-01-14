@@ -1,5 +1,5 @@
-#include "../src/lib/utils.h"
 #include "../src/lib/server.h"
+#include "../src/lib/utils.h"
 #include "generics.h"
 #include <stdio.h>
 
@@ -7,12 +7,13 @@ TestResult test_types() {
   HashMap map = new_hashmap(6);
   put(&map, 1, (BucketValue){.i_value = 3});
   put(&map, 3, (BucketValue){.c_value = 'H'});
-  
-  client_t* client = malloc(sizeof(client_t));
+
+  client_t *client = malloc(sizeof(client_t));
   memset(client, 0, sizeof(client_t));
   client->client_id = 3;
   
-  client_t* client2 = malloc(sizeof(client_t));
+
+  client_t *client2 = malloc(sizeof(client_t));
   memset(client2, 0, sizeof(client_t));
   client2->client_id = 1;
 
@@ -56,12 +57,12 @@ TestResult test_remove_without_collisions() {
   put(&map, 3, (BucketValue){.i_value = 3});
   put(&map, 4, (BucketValue){.i_value = 4});
   put(&map, 5, (BucketValue){.i_value = 5});
-  remove_value(map, 3);
+  remove_value(&map, 3);
 
   EXPECT_EQ(get(map, 3).err, -1);
   EXPECT_EQ(get(map, 5).i_value, 5);
 
-  remove_value(map, 1);
+  remove_value(&map, 1);
 
   EXPECT_EQ(get(map, 1).err, -1);
   EXPECT_EQ(get(map, 6).err, -1);
@@ -78,12 +79,12 @@ TestResult test_remove_with_collisions() {
   put(&map, 4, (BucketValue){.i_value = 4});
   put(&map, 5, (BucketValue){.i_value = 5});
   put(&map, 6, (BucketValue){.i_value = 6});
-  remove_value(map, 3);
+  remove_value(&map, 3);
 
   EXPECT_EQ(get(map, 3).err, -1);
   EXPECT_EQ(get(map, 5).i_value, 5);
 
-  remove_value(map, 1);
+  remove_value(&map, 1);
 
   EXPECT_EQ(get(map, 1).err, -1);
   EXPECT_EQ(get(map, 6).i_value, 6);

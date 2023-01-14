@@ -50,7 +50,9 @@ typedef struct LINKEDLIST_T {
 
 LinkedList *init_list();
 int push_node(LinkedList *list, int value);
+int push_node_at(LinkedList *list, int value, int index);
 int pop_node(LinkedList *list);
+struct node *peek_node(LinkedList *list);
 int remove_node(LinkedList *list, int predicate);
 void free_list(LinkedList *list);
 
@@ -58,7 +60,7 @@ void free_list(LinkedList *list);
  * STACK
  */
 typedef struct {
-  struct node *head;
+  struct node *top;
   BOOL is_full;
   int used;
   int max;
@@ -115,7 +117,7 @@ void free_hashmap(HashMap *map);
 
 void put(HashMap *map, int key, BucketValue value);
 BucketValue get(HashMap map, int key);
-void remove_value(HashMap map, int key);
+void remove_value(HashMap *map, int key);
 
 #ifndef HANDLE_SOCK_ERROR_FN
 #define HANDLE_SOCK_ERROR_FN
@@ -225,4 +227,5 @@ char *deserialize_string(char *buf);
 int deserialize_enum(char *buf);
 client_t *deserialize_client(char *buf);
 
+void *__malloc(size_t size, const char *file, int line);
 #endif

@@ -4,15 +4,8 @@
 
 #define PORT 80
 
-volatile sig_atomic_t server_interrupted = 0;
-
-pthread_t server_thread;
+/* pthread_t server_thread; */
 /* pthread_t game_handling_thread; */
-
-void server_sigint(int sig) {
-  printf("\x1b[33;1mAttempting to disconnect from server\x1b[0m\n");
-  server_interrupted = 1;
-}
 
 int main() {
   // Initialize the server
@@ -80,12 +73,7 @@ server_t *server_init(short port) {
   printf("\x1b[33;1mAttempting to create %d spaces for clients.\x1b[0m\n",
          MAX_CLIENTS);
   HashMap clients = new_hashmap(MAX_CLIENTS);
-  stck_t *available_ids = init_stack(MAX_CLIENTS);
-  for (int i = MAX_CLIENTS; i > 0; i--) {
-    push(available_ids, i);
-  }
   server->clients = clients;
-  server->available_ids = available_ids;
 
   printf("\x1b[32;1mClient spaces created successfully\x1b[0m\n");
 
@@ -106,6 +94,7 @@ int server_listen(server_t *server) {
 }
 
 client_t server_accept(server_t *server) {
+  client_t *client = malloc(sizeof(client_t));
   printf("\x1b[33;1mAttempting to accept client\x1b[0m\n");
   struct sockaddr_in client_addr;
   socklen_t client_addr_len = sizeof(client_addr);
@@ -116,12 +105,35 @@ client_t server_accept(server_t *server) {
     exit(1);
   }
 
-  printf("\x1b[32;1mClient accepted successfully\x1b[0m\n");
-  client_t *client = malloc(sizeof(client_t));
   client->socket = client_socket;
   client->addr = client_addr;
   client->player_type = SPECTATOR;
-  client->client_id = pop(server->available_ids);
+
+  // We need to get the next available ID
+  // Since the entry_ids are ordered in ascending
+  // we can just loop over them and find the first
+  // available ID
+  struct node *current = server->clients.entry_ids->head;
+  uint next_id = 1;
+
+  // If there are no available IDs in gaps,
+  // we can use the tail + 1
+  if (current == NULL) {
+    next_id = 1;
+  } else {
+    while (current != NULL) {
+      if ((uint)current->data != next_id) {
+        break;
+      }
+      next_id++;
+      current = current->next;
+    }
+  }
+
+  client->client_id = next_id;
+
+  printf("\x1b[32;1mClient %d accepted successfully\x1b[0m\n",
+         client->client_id);
 
   // We need to handle client/user creation
   // The ID of the client is assigned by popping the next
@@ -147,41 +159,53 @@ void server_serve(server_t *server) {
     // descriptors in the map (server->clients->entry_ids) to check if there
     // have been any disconnects After we have done this, we can begin
     // handling connections.
-    struct node *current_id = server->clients.entry_ids->head;
-    BucketValue ret;
-    client_t *client = NULL;
-    printf("\033c");
-    while (current_id != NULL) {
-      int client_id = current_id->data;
-      ret = get(server->clients, client_id);
-      if (ret.err != -1) {
-        client = ret.client;
-        printf("Client %d: %d\n", client_id, client->socket);
 
-        // We can check if the client has disconnected by attempting
-        // to read from the socket
-        char buf[1];
-        int read_status = recv(client->socket, buf, 1, MSG_PEEK);
-        if (read_status == 0) {
-          // The client has disconnected
-          printf("\x1b[31;1mClient %d has disconnected\x1b[0m\n", client_id);
-          // We want to close the socket
-          close(client->socket);
-          // We want to free the client
-          free(client);
-          // We want to remove the client from the map
-          remove_value(server->clients, client_id);
-          // We want to push the client id back onto the stack
-          push(server->available_ids, client_id);
-        }
+    BucketValue ret;
+    client_t *client;
+    while (entry_ids != NULL) {
+      int client_id = entry_ids->data;
+      ret = get(server->clients, client_id);
+      if (ret.err == -1) {
+        entry_ids = entry_ids->next;
+        continue;
       }
-      current_id = current_id->next;
+      client = ret.client;
+      // Check if the client has disconnected
+      char buf[1] = {0};
+      int recv_status = recv(client->socket, buf, 1, MSG_PEEK);
+      if (recv_status > 0) {
+        // NOTE: Even though we do not register it,
+        // we must consume the input so that it does not linger
+        // and affect the recv calls if the client disconnects.
+        recv(client->socket, NULL, 1024, 0);
+      } else if (recv_status == 0) {
+        // The client has disconnected
+        printf("\x1b[31;1mClient %d has disconnected\x1b[0m\n", client_id);
+        // Close the socket
+        close(client->socket);
+        // Free the client
+        free(client);
+        // Remove the client from the hashmap
+        remove_value(&server->clients, client_id);
+      }
+
+      if (entry_ids != NULL)
+        entry_ids = entry_ids->next;
+
     }
 
     if (poll(fds, 1, 100) > 0) {
       if (fds[0].revents & POLLIN) {
         client_t client = server_accept(server);
-        printf("\x1b[32;1mClient connected successfully\x1b[0m\n");
+        printf("\x1b[32;1mClient %d connected successfully\x1b[0m\n",
+               client.client_id);
+        // Convert client id to string
+        // id_size is the number of bytes used to store the number
+        // in hex
+        int length = snprintf(NULL, 0, "%d", client.client_id);
+        char *client_id = calloc(length + 1, sizeof(char));
+        sprintf(client_id, "%d", client.client_id);
+        send(client.socket, client_id, length + 1, 0);
       } else if (fds[0].revents & POLLERR) {
         printf("\x1b[31;1mError occurred\x1b[0m\n");
       }

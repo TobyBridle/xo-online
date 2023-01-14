@@ -1,35 +1,90 @@
 #include "lib/utils.h"
 
+#define _malloc malloc
+#ifdef DEBUG
+#define free(x)                                                                \
+  fprintf(stderr, "Freeing Address %p at %s:%d\n", x, __FILE__, __LINE__);     \
+  free(x);                                                                     \
+  fprintf(stderr, "Freeing Successful\n");
+
+#define _malloc(e) __malloc(e, __FILE__, __LINE__);
+#endif
+
 LinkedList *init_list() {
-  LinkedList *list = malloc(sizeof(LinkedList));
+  // LinkedList uses a head for the first node and a tail for the next
+  // node to be added.
+  // Initially, the head and tail are NULL
+  // We can say a list is empty if head == NULL
+  LinkedList *list = calloc(1, sizeof(LinkedList));
   list->head = list->tail = NULL;
   return list;
 }
 
 int push_node(LinkedList *list, int value) {
-  struct node *new_node = (struct node *)malloc(sizeof(struct node));
+  struct node *new_node = (struct node *)_malloc(sizeof(struct node));
   new_node->data = value;
   new_node->next = NULL;
 
+  // If there are no nodes in the LinkedList
   if (list->head == NULL) {
     list->head = list->tail = new_node;
     return 0;
   } else {
     list->tail->next = new_node;
-    list->tail = new_node;
-    return 0;
+    list->tail = list->tail->next;
   }
+
+  return 0;
+}
+
+// Push a node at a specific (0-based) index
+int push_node_at(LinkedList *list, int value, int index) {
+  struct node *new_node = (struct node *)_malloc(sizeof(struct node));
+  new_node->data = value;
+  new_node->next = NULL;
+
+  // If there are no nodes in the LinkedList
+  if (list->head == NULL) {
+    list->head = list->tail = new_node;
+    return 0;
+  } else {
+    struct node *curr = list->head;
+    struct node *prev = NULL;
+    uint iters = 0;
+    while (curr != NULL && iters != index) {
+      prev = curr;
+      curr = curr->next;
+      ++iters;
+    }
+    if (prev == NULL) {
+      new_node->next = curr;
+      list->head = new_node;
+      return 0;
+    } else {
+      new_node->next = curr;
+      prev->next = new_node;
+      return 0;
+    }
+  }
+
+  return -1;
 }
 
 int pop_node(LinkedList *list) {
   if (list->head == NULL) {
     return -1;
   }
-  struct node *head = list->head;
-  int data = head->data;
-  list->head = head->next;
-  free(head);
+  struct node *head_copy = list->head;
+  int data = head_copy->data;
+  list->head = list->head->next;
+  free(head_copy);
   return data;
+}
+
+struct node *peek_node(LinkedList *list) {
+  if (list->head == NULL)
+    return NULL;
+  return list->head;
 }
 
 int remove_node(LinkedList *list, int predicate) {
@@ -45,7 +100,13 @@ int remove_node(LinkedList *list, int predicate) {
       } else {
         prev->next = head->next;
       }
+      // We might not want to free the node here
+      // We may just want to nullify the node
+      if (head == list->tail) {
+        list->tail = prev;
+      }
       free(head);
+      head = NULL;
       return 0;
     }
     prev = head;
@@ -63,28 +124,23 @@ void free_list(LinkedList *list) {
 }
 
 stck_t *init_stack(int max_size) {
-  stck_t *stack = malloc(sizeof(stck_t));
-  memset(stack, 0, sizeof(stck_t));
-  stack->head = NULL;
+  stck_t *stack = calloc(1, sizeof(stck_t));
+  stack->is_full = stack->used = 0;
   stack->max = max_size;
-
+  stack->top = NULL;
   return stack;
 }
 
-int push(stck_t *stack, int data) {
-  // Check if the stack is full
+int push(stck_t *stack, int value) {
   if (stack->is_full)
     return -1;
-  if (stack->used == stack->max) {
-    stack->is_full = TRUE;
-    return -1;
-  }
-
-  struct node *new_node = (struct node *)malloc(sizeof(struct node));
-  new_node->data = data;
-  new_node->next = stack->head;
-  stack->head = new_node;
+  struct node *new_node = (struct node *)calloc(1, sizeof(struct node));
+  new_node->data = value;
+  new_node->next = stack->top;
+  stack->top = new_node;
   stack->used++;
+  if (stack->used == stack->max)
+    stack->is_full = 1;
   return 0;
 }
 
@@ -92,25 +148,24 @@ int pop(stck_t *stack) {
   // Check if the stack is empty
   if (peek(stack) == -1) {
     return -1;
-  }
-  // Clone the data
-  int data = stack->head->data;
-  // Clone the head pointer
-  struct node *head = (struct node *)malloc(sizeof(struct node));
-  head->data = stack->head->data;
-  head->next = stack->head->next;
 
-  free(stack->head);
-  stack->head = head->next;
-  free(head);
+  struct node *top = stack->top;
+  int data = stack->top->data;
+  stack->top = top->next;
 
+  free(top);
+  top = NULL;
   stack->used--;
+
+  if (stack->used == stack->max - 1)
+    stack->is_full = 0;
   return data;
 }
+
 int peek(stck_t *stack) {
-  if (stack->head == NULL)
+  if (stack->top == NULL)
     return -1;
-  return stack->head->data;
+  return stack->top->data;
 }
 
 void free_stack(stck_t *stack) {
@@ -131,7 +186,7 @@ HashMap new_hashmap(int map_size) {
 void free_hashmap(HashMap *map) {
   int entry_id;
   while ((entry_id = pop_node(map->entry_ids)) != -1) {
-    remove_value(*map, entry_id);
+    remove_value(map, entry_id);
   }
 
   free(map->buckets);
@@ -143,11 +198,27 @@ void put(HashMap *map, int key, BucketValue value) {
   Bucket *curr = &map->buckets[hash];
   if (curr->key == NO_VALUE) {
     *curr = (Bucket){.key = key, .value = value, .next = NULL};
-    push_node(map->entry_ids, key);
+    // We want to insert the key into the entry_ids list
+    // but in an ordered fashion
+    // The entry_ids list is a linked list
+    // in ascending order
+    // We need to get the node before the node that is greater than key
+    // and insert the node after that node
+    uint insert_pos = 0;
+    struct node *curr = map->entry_ids->head;
+    while (curr != NULL && curr->data < key) {
+      curr = curr->next;
+      insert_pos++;
+    }
+
+    // We have the position to insert the node
+    push_node_at(map->entry_ids, key, insert_pos);
+
     map->used_buckets++;
     return;
   }
 
+  // NOTE: If we get here, we have a collision
   while (curr->next != NULL && curr->key != key)
     curr = curr->next;
 
@@ -178,9 +249,12 @@ BucketValue get(HashMap map, int key) {
   }
 }
 
-void remove_value(HashMap map, int key) {
-  int hash = HASH(key, map.bucket_count);
-  Bucket *curr = &map.buckets[hash];
+void remove_value(HashMap *map, int key) {
+  int hash = HASH(key, map->bucket_count);
+  Bucket *curr = &map->buckets[hash];
+  if (curr == NULL)
+    return;
+
   // If the bucket is empty
   if (curr->key == NO_VALUE)
     return;
@@ -189,7 +263,8 @@ void remove_value(HashMap map, int key) {
   if (curr->next == NULL) {
     *curr = (Bucket){
         .key = NO_VALUE, .value = (BucketValue){.err = -1}, .next = NULL};
-    remove_node(map.entry_ids, key);
+    remove_node(map->entry_ids, key);
+    map->used_buckets--;
     return;
   }
 
@@ -198,7 +273,8 @@ void remove_value(HashMap map, int key) {
     Bucket *next = curr->next;
     *curr = *next;
     free(next);
-    remove_node(map.entry_ids, key);
+    remove_node(map->entry_ids, key);
+    map->used_buckets--;
     return;
   }
 
@@ -215,7 +291,8 @@ void remove_value(HashMap map, int key) {
 
   prev->next = curr->next;
   free(curr);
-  remove_node(map.entry_ids, key);
+  map->used_buckets--;
+  remove_node(map->entry_ids, key);
 }
 
 void handle_sock_error(int err) {
@@ -279,7 +356,7 @@ char *serialize_int(int i) {
   // 0x01 0x04 0x00 0x00 0x00 0x00
   // ---- ---- ---- ---- ---- ----
   // 6 Bytes + NULL Terminator
-  char *buf = malloc(7);
+  char *buf = calloc(7, sizeof(char));
   buf[0] = 0x01;
   buf[1] = 0x04;
   buf[2] = (i >> 24) & 0xFF;
@@ -303,7 +380,7 @@ char *serialize_bool(BOOL b) {
   // 0x01 0x01 0x00
   // ---- ---- ----
   // 3 Bytes + NULL Terminator
-  char *buf = malloc(4);
+  char *buf = calloc(4, sizeof(char));
   buf[0] = 0x01;
   buf[1] = 0x01;
   buf[2] = b ? 0x01 : 0x00;
@@ -358,7 +435,7 @@ char *serialize_enum(int e) {
   // 0x01 0x01 0x00
   // ---- ---- ----
   // 3 Bytes + NULL Terminator
-  char *buf = malloc(4);
+  char *buf = calloc(4, sizeof(char));
   buf[0] = 0x01;
   buf[1] = 0x01;
   buf[2] = e;
@@ -396,10 +473,19 @@ char *serialize_client(client_t *client) {
   buf[1] = len;
 
   // Serializing fields
-  memcpy(buf + 2, serialize_int(client->socket), 6);
-  memcpy(buf + 8, serialize_int(client->client_id), 6);
-  memcpy(buf + 14, serialize_string(client->client_name),
-         strlen(client->client_name) + 2);
+  char *client_name = serialize_string(client->client_name);
+  char *serialized_int;
+
+  serialized_int = serialize_int(client->socket);
+  memcpy(buf + 2, serialized_int, 6);
+  free(serialized_int);
+
+  serialized_int = serialize_int(client->client_id);
+  memcpy(buf + 8, serialized_int, 6);
+  free(serialized_int);
+
+  memcpy(buf + 14, client_name, strlen(client->client_name) + 2);
+  free(client_name);
 
   // We need to serialize the struct sockaddr_in addr
   // Fields:
@@ -409,24 +495,30 @@ char *serialize_client(client_t *client) {
   // .sin_port (unsigned short),
 
   // Serializing the sin_family using serialize_enum
-  memcpy(buf + 15 + strlen(client->client_name) + 2,
-         serialize_enum(client->addr.sin_family), 3);
+  char *enum_serialize;
+  enum_serialize = serialize_enum(client->addr.sin_family);
+  memcpy(buf + 15 + strlen(client->client_name) + 2, enum_serialize, 3);
+  free(enum_serialize);
 
   // Serializing the sin_addr using serialize_int
-  memcpy(buf + 18 + strlen(client->client_name) + 2,
-         serialize_int(client->addr.sin_addr.s_addr), 6);
+  serialized_int = serialize_int(client->addr.sin_addr.s_addr);
+  memcpy(buf + 18 + strlen(client->client_name) + 2, serialized_int, 6);
+  free(serialized_int);
 
   // Serializing the sin_len using serialize_int
-  memcpy(buf + 24 + strlen(client->client_name) + 2,
-         serialize_int(client->addr.sin_len), 6);
+  serialized_int = serialize_int(client->addr.sin_len);
+  memcpy(buf + 24 + strlen(client->client_name) + 2, serialized_int, 6);
+  free(serialized_int);
 
   // Serializing the sin_port using serialize_int
-  memcpy(buf + 30 + strlen(client->client_name) + 2,
-         serialize_int(client->addr.sin_port), 6);
+  serialized_int = serialize_int(client->addr.sin_port);
+  memcpy(buf + 30 + strlen(client->client_name) + 2, serialized_int, 6);
+  free(serialized_int);
 
   // Serializing the player_type using serialize_enum
-  memcpy(buf + 36 + strlen(client->client_name) + 2,
-         serialize_enum(client->player_type), 3);
+  enum_serialize = serialize_enum(client->player_type);
+  memcpy(buf + 36 + strlen(client->client_name) + 2, enum_serialize, 3);
+  free(enum_serialize);
   return buf;
 }
 
@@ -458,4 +550,17 @@ client_t *deserialize_client(char *buf) {
       deserialize_enum(buf + 36 + strlen(client->client_name) + 2);
 
   return client;
+}
+
+void *__malloc(size_t size, const char *file, int line) {
+  printf("Attempting to allocate memory!\n");
+  void *ptr = malloc(size);
+  if (ptr == NULL) {
+    fprintf(stderr, "\x1b[31;1mFailed to allocate memory at %s:%d\x1b[0m\n",
+            file, line);
+    exit(1);
+  }
+  printf("\x1b[32;1mAllocated %zu bytes at %p - %s:%d\x1b[0m\n", size, ptr,
+         file, line);
+  return ptr;
 }

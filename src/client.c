@@ -20,8 +20,9 @@ int main() {
     // The first thing we will receive is the client ID
 
     int poll_status = poll(fds, 1, 100);
+    char peek_buf[1] = {0};
     if (poll_status > 0) {
-      int read_status = recv(client->socket, buffer, 1024, 0);
+      int read_status = recv(client->socket, peek_buf, 1, MSG_PEEK);
       if (fds[0].revents & POLL_IN) {
         // We have received a message
         if (read_status == -1) {
@@ -33,15 +34,18 @@ int main() {
           printf("\x1b[31;1mServer has disconnected\x1b[0m\r\n");
           break;
         }
+
+        recv(client->socket, buffer, 1024, 0);
         if (client_id == -1) {
           // We have received the client ID
           // We need to use strtol to convert the string to an integer
           /* client_id = deserialize_int(buffer); */
-          client_id = 3;
+          client_id = strtol(buffer, NULL, 10);
 
           printf("\x1b[32;1mConnected to server as client %s\x1b[0m\r\n",
                  buffer);
         }
+        printf("Buffer: %s\r\n", buffer);
       } else if (fds[0].revents & POLL_ERR) {
         printf("\x1b[31;1mError occurred\x1b[0m\r\n");
       }

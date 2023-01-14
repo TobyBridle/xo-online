@@ -1,5 +1,6 @@
 #include "lib/server.h"
 #include "lib/client.h"
+#include "lib/resources.h"
 #include "lib/utils.h"
 
 #define PORT 80
@@ -212,14 +213,13 @@ void server_serve(server_t *server) {
         client_t client = server_accept(server);
         printf("\x1b[32;1mClient %d connected successfully\x1b[0m\n",
                client.client_id);
-        // Convert client id to string
-        // id_size is the number of bytes used to store the number
-        // in hex
-        int length = snprintf(NULL, 0, "%d", client.client_id);
-        char *client_id = calloc(length + 1, sizeof(char));
+        int length = snprintf(NULL, 0, "%d", client.client_id) + 1;
+        char *client_id = calloc(length, sizeof(char));
         sprintf(client_id, "%d", client.client_id);
-        send(client.socket, client_id, length + 1, 0);
+        send(client.socket, client_id, length, 0);
 
+        send(client.socket, clear_screen.s_string, 1024, 0);
+        send(client.socket, main_menu.s_string, 1024, 0);
       } else if (fds[0].revents & POLLERR) {
         printf("\x1b[31;1mError occurred\x1b[0m\n");
       }

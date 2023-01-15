@@ -102,6 +102,7 @@ int server_listen(server_t *server) {
 
 client_t server_accept(server_t *server) {
   client_t *client = malloc(sizeof(client_t));
+  server->state = ACCEPTING;
   printf("\x1b[33;1mAttempting to accept client\x1b[0m\n");
   struct sockaddr_in client_addr;
   socklen_t client_addr_len = sizeof(client_addr);
@@ -110,6 +111,12 @@ client_t server_accept(server_t *server) {
   if (client_socket == -1) {
     handle_sock_error(errno);
     exit(1);
+  }
+
+  if (server->clients.used_buckets == MAX_CLIENTS) {
+    send(client_socket, serialize_int(-1), 7, 0);
+    server->state = NOT_ACCEPTING;
+    return (client_t){.socket = -1, 0};
   }
 
   client->socket = client_socket;
@@ -152,6 +159,7 @@ client_t server_accept(server_t *server) {
 void server_serve(server_t *server) {
   printf("\x1b[33;1mAttempting to serve clients\x1b[0m\n");
   signal(SIGINT, server_sigint);
+  server->state = ACCEPTING;
 
   // We want to use `poll` to check for new connections
   struct pollfd fds[1];
@@ -223,6 +231,9 @@ void server_serve(server_t *server) {
     if (poll(fds, 1, 100) > 0) {
       if (fds[0].revents & POLLIN) {
         client_t client = server_accept(server);
+        if (client.socket == -1) {
+          continue;
+        }
         printf("\x1b[32;1mClient %d connected successfully\x1b[0m\n",
                client.client_id);
         int length = snprintf(NULL, 0, "%d", client.client_id) + 1;

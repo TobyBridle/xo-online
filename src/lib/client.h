@@ -9,11 +9,14 @@
 #include <string.h>
 #include <sys/errno.h>
 #include <sys/signal.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
 
 #define TCP 0
+#define RECONNECT_INTERVAL                                                     \
+  1 // This is the amount of seconds inbetween reconnect attempts
 
 #ifndef NOUGHTS_CROSSES_CLIENT_T
 #define NOUGHTS_CROSSES_CLIENT_T

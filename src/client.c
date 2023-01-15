@@ -14,15 +14,36 @@ int main() {
   enable_raw_term();
 
   char c;
+  BOOL attempted_connection = FALSE;
+  struct timeval attempt_time, curr_time;
 
   while (client->socket == fds[0].fd) {
     // Check if we have a connection
     // The first thing we will receive is the client ID
 
     int poll_status = poll(fds, 1, 100);
-    char peek_buf[1] = {0};
+    char peek_buf[7] = {0};
     if (poll_status > 0) {
-      int read_status = recv(client->socket, peek_buf, 1, MSG_PEEK);
+      int read_status = recv(client->socket, peek_buf, 7, MSG_PEEK);
+
+      gettimeofday(&curr_time, NULL);
+      int time_elapsed = curr_time.tv_sec - attempt_time.tv_sec;
+
+      if (deserialize_int(peek_buf) == -1) {
+        if (!attempted_connection) {
+          fprintf(stderr,
+                  "\x1b[31;1mCould not connect to Server. Too many "
+                  "connections\r\nRetrying in %ds\x1b[0;0m\r\n",
+                  RECONNECT_INTERVAL);
+          gettimeofday(&attempt_time, NULL);
+        } else if (time_elapsed > RECONNECT_INTERVAL) {
+          fprintf(stderr,
+                  "\x1b[33;1mAttempting to connect to Server.\x1b[0;0m\r\n");
+          gettimeofday(&attempt_time, NULL);
+        }
+        attempted_connection = time_elapsed > RECONNECT_INTERVAL ? FALSE : TRUE;
+        goto INPUT;
+      }
       if (fds[0].revents & POLL_IN) {
         // We have received a message
         if (read_status == -1) {
@@ -52,6 +73,7 @@ int main() {
     }
 
     // Check if input
+  INPUT:
     if (read(STDIN_FILENO, &c, 1) == 1) {
       switch (c) {
       case QUIT_KEY:

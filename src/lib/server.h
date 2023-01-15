@@ -22,12 +22,9 @@
 
 const int MAX_CLIENTS = 1000;
 
-enum SERVER_STATE { ACCEPTING, NOT_ACCEPTING };
-
 typedef struct {
   int socket;
   short port;
-  enum SERVER_STATE state;
   HashMap clients;
 } server_t;
 

@@ -5,6 +5,12 @@
 
 #define PORT 80
 
+volatile sig_atomic_t server_interrupted = 0;
+void server_sigint(int sig) {
+  printf("\x1b[33;1mAttempting to disconnect from server\x1b[0m\n");
+  server_interrupted = 1;
+}
+
 /* pthread_t server_thread; */
 /* pthread_t game_handling_thread; */
 
@@ -145,6 +151,7 @@ client_t server_accept(server_t *server) {
 
 void server_serve(server_t *server) {
   printf("\x1b[33;1mAttempting to serve clients\x1b[0m\n");
+  signal(SIGINT, server_sigint);
 
   // We want to use `poll` to check for new connections
   struct pollfd fds[1];
@@ -154,6 +161,11 @@ void server_serve(server_t *server) {
   // If there is a new connection, we want to call
   // `server_accept` and add the client to the list of clients
   loop {
+
+    if (server_interrupted) {
+      server_unbind(server);
+    }
+
     // NOTE: First we need to poll the currently used file descriptors
     // This is because we want to get the next available id BEFORE there is a
     // connection rather than AFTER the connection. We can find the file
@@ -235,7 +247,23 @@ void server_start(server_t *server) {
 
 int server_unbind(server_t *server) {
   // TODO: Implement freeing and closing of sockets.
-  fprintf(stderr,
-          "\x1b[31;Cannot Unbind Server; Not Yet Implemented!\x1b[0m\n");
-  return -1;
+  int entry_id;
+  client_t *client;
+  // NOTE: This block is almost identical
+  // To the `free_hashmap(&map)` function, with the difference
+  // being that we get the client from the map and then close it.
+  while ((entry_id = pop_node(server->clients.entry_ids)) != -1) {
+    client = get(server->clients, entry_id).client;
+    close(client->socket);
+    printf("\x1b[32;1mClosed connection from Client %d\x1b[0;0m\n",
+           client->client_id);
+    remove_value(&server->clients, entry_id);
+  }
+
+  free(server->clients.buckets);
+  free(server->clients.entry_ids);
+  free(server);
+
+  printf("\x1b[33;1mAttempting to kill server instance now\x1b[0;0m\n");
+  exit(0);
 }

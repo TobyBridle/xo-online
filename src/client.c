@@ -66,7 +66,7 @@ int main() {
           printf("\x1b[32;1mConnected to server as client %s\x1b[0m\r\n",
                  buffer);
         }
-        printf("Buffer: %s\r\n", buffer);
+        printf("%s\r\n", buffer);
       } else if (fds[0].revents & POLL_ERR) {
         printf("\x1b[31;1mError occurred\x1b[0m\r\n");
       }

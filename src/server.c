@@ -239,7 +239,7 @@ void server_serve(server_t *server) {
         int length = snprintf(NULL, 0, "%d", client.client_id) + 1;
         char *client_id = calloc(length, sizeof(char));
         sprintf(client_id, "%d", client.client_id);
-        send(client.socket, client_id, length, 0);
+        send(client.socket, client_id, 1024, 0);
 
         send(client.socket, clear_screen.s_string, 1024, 0);
         send(client.socket, main_menu.s_string, 1024, 0);

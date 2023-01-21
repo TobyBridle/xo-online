@@ -102,8 +102,6 @@ int server_listen(server_t *server) {
 
 client_t server_accept(server_t *server) {
   client_t *client = malloc(sizeof(client_t));
-  server->state = ACCEPTING;
-  printf("\x1b[33;1mAttempting to accept client\x1b[0m\n");
   struct sockaddr_in client_addr;
   socklen_t client_addr_len = sizeof(client_addr);
   int client_socket =
@@ -114,11 +112,18 @@ client_t server_accept(server_t *server) {
   }
 
   if (server->clients.used_buckets == MAX_CLIENTS) {
-    send(client_socket, serialize_int(-1), 7, 0);
+    char *serialized_err = serialize_int(-1);
+    send(client_socket, serialized_err, 7, 0);
+    free(serialized_err);
+
+    close(client_socket);
+    return (client_t){.socket = -1};
+  }
+  if (server->clients.used_buckets + 1 == MAX_CLIENTS) {
     server->state = NOT_ACCEPTING;
-    return (client_t){.socket = -1, 0};
   }
 
+  printf("\x1b[33;1mAttempting to accept client\x1b[0m\n");
   client->socket = client_socket;
   client->addr = client_addr;
   client->player_type = SPECTATOR;

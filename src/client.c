@@ -37,9 +37,8 @@ int main() {
                   RECONNECT_INTERVAL);
           gettimeofday(&attempt_time, NULL);
         } else if (time_elapsed > RECONNECT_INTERVAL) {
-          fprintf(stderr,
-                  "\x1b[33;1mAttempting to connect to Server.\x1b[0;0m\r\n");
           gettimeofday(&attempt_time, NULL);
+          client_connect(fds[0].fd, client);
         }
         attempted_connection = time_elapsed > RECONNECT_INTERVAL ? FALSE : TRUE;
         goto INPUT;
@@ -118,32 +117,40 @@ client_t *client_init() {
     exit(1);
   }
   printf("\x1b[32;1mSocket created successfully\x1b[0m\n");
-
-  printf("\x1b[33;1mAttempting to connect to server\x1b[0m\n");
-  struct sockaddr_in server_addr = {.sin_family = AF_INET,
-                                    .sin_addr = INADDR_ANY,
-                                    .sin_len = sizeof(server_addr),
-                                    .sin_port = htons(PORT)};
-  int connect_status =
-      connect(socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
-  if (connect_status == -1) {
-    handle_sock_error(errno);
-    exit(1);
-  }
-
-  client->socket = socket_fd;
-  client->addr = server_addr;
-
-  // NOTE: THESE ARE DECIDED BY THE SERVER
-  client->client_id = -1;
-  client->player_type = SPECTATOR;
+  client_connect(socket_fd, client);
 
   printf("\x1b[32;1mSuccessfully sent username to server\x1b[0m\n");
   return client;
 }
 
+void client_connect(int server_fd, client_t *client) {
+  printf("\x1b[33;1mAttempting to connect to server\x1b[0m\r\n");
+  struct sockaddr_in server_addr = {.sin_family = AF_INET,
+                                    .sin_addr = INADDR_ANY,
+                                    .sin_len = sizeof(server_addr),
+                                    .sin_port = htons(PORT)};
+  int connect_status =
+      connect(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
+  if (connect_status == -1 && server_fd == client->socket) {
+    return;
+  } else if (connect_status == -1) {
+    handle_sock_error(errno);
+    client_disconnect(client);
+    exit(1);
+  }
+
+  client->socket = server_fd;
+  client->addr = server_addr;
+
+  // NOTE: THESE ARE DECIDED BY THE SERVER
+  client->client_id = -1;
+  client->player_type = SPECTATOR;
+}
+
 void client_disconnect(client_t *client) {
   printf("\x1b[33;1mAttempting to disconnect from server\x1b[0m\n");
+  printf("\x1b[33;1mAttempting to disconnect (%d) from server\x1b[0m\n",
+         client->socket);
   int close_status = close(client->socket);
   if (close_status == -1) {
     handle_sock_error(errno);

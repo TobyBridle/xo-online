@@ -52,7 +52,7 @@ void disable_raw_term();
 /* ------------------------------------------------------------------------ */
 
 client_t *client_init();
-void client_connect(int server_fd, client_t *client);
+int client_connect(int server_fd, client_t *client);
 void client_disconnect(client_t *client);
 
 #ifndef HANDLE_SOCK_ERROR_FN

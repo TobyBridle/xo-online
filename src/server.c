@@ -104,23 +104,12 @@ client_t server_accept(server_t *server) {
   client_t *client = malloc(sizeof(client_t));
   struct sockaddr_in client_addr;
   socklen_t client_addr_len = sizeof(client_addr);
+
   int client_socket =
       accept(server->socket, (struct sockaddr *)&client_addr, &client_addr_len);
   if (client_socket == -1) {
     handle_sock_error(errno);
     exit(1);
-  }
-
-  if (server->clients.used_buckets == MAX_CLIENTS) {
-    char *serialized_err = serialize_int(-1);
-    send(client_socket, serialized_err, 7, 0);
-    free(serialized_err);
-
-    close(client_socket);
-    return (client_t){.socket = -1};
-  }
-  if (server->clients.used_buckets + 1 == MAX_CLIENTS) {
-    server->state = NOT_ACCEPTING;
   }
 
   printf("\x1b[33;1mAttempting to accept client\x1b[0m\n");
@@ -235,10 +224,13 @@ void server_serve(server_t *server) {
 
     if (poll(fds, 1, 100) > 0) {
       if (fds[0].revents & POLLIN) {
-        client_t client = server_accept(server);
-        if (client.socket == -1) {
+        if (server->clients.used_buckets == MAX_CLIENTS) {
           continue;
+        } else {
+          server->state = ACCEPTING;
         }
+
+        client_t client = server_accept(server);
         printf("\x1b[32;1mClient %d connected successfully\x1b[0m\n",
                client.client_id);
         int length = snprintf(NULL, 0, "%d", client.client_id) + 1;

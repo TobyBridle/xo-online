@@ -14,35 +14,17 @@ int main() {
   enable_raw_term();
 
   char c;
-  BOOL attempted_connection = FALSE;
-  struct timeval attempt_time, curr_time;
 
   while (client->socket == fds[0].fd) {
     // Check if we have a connection
     // The first thing we will receive is the client ID
 
-    int poll_status = poll(fds, 1, 100);
+    int poll_status =
+        poll(fds, 1, client_id == -1 ? RECONNECT_INTERVAL * 1000 : 100);
     char peek_buf[7] = {0};
     if (poll_status > 0) {
       int read_status = recv(client->socket, peek_buf, 7, MSG_PEEK);
 
-      gettimeofday(&curr_time, NULL);
-      int time_elapsed = curr_time.tv_sec - attempt_time.tv_sec;
-
-      if (deserialize_int(peek_buf) == -1) {
-        if (!attempted_connection) {
-          fprintf(stderr,
-                  "\x1b[31;1mCould not connect to Server. Too many "
-                  "connections\r\nRetrying in %ds\x1b[0;0m\r\n",
-                  RECONNECT_INTERVAL);
-          gettimeofday(&attempt_time, NULL);
-        } else if (time_elapsed > RECONNECT_INTERVAL) {
-          gettimeofday(&attempt_time, NULL);
-          client_connect(fds[0].fd, client);
-        }
-        attempted_connection = time_elapsed > RECONNECT_INTERVAL ? FALSE : TRUE;
-        goto INPUT;
-      }
       if (fds[0].revents & POLL_IN) {
         // We have received a message
         if (read_status == -1) {
@@ -69,10 +51,15 @@ int main() {
       } else if (fds[0].revents & POLL_ERR) {
         printf("\x1b[31;1mError occurred\x1b[0m\r\n");
       }
+    } else if (poll_status == 0 && client_id == -1) {
+      fprintf(stderr,
+              "\x1b[31;1mCould not connect to Server. There may be too many "
+              "connections\r\nRetrying in %ds\x1b[0;0m\r\n",
+              RECONNECT_INTERVAL);
+      client_connect(fds[0].fd, client);
     }
 
     // Check if input
-  INPUT:
     if (read(STDIN_FILENO, &c, 1) == 1) {
       switch (c) {
       case QUIT_KEY:
@@ -117,13 +104,15 @@ client_t *client_init() {
     exit(1);
   }
   printf("\x1b[32;1mSocket created successfully\x1b[0m\n");
-  client_connect(socket_fd, client);
+  int did_connect = client_connect(socket_fd, client) == 0 ? 1 : 0;
+  if (!did_connect) {
+    client->socket = socket_fd;
+  }
 
-  printf("\x1b[32;1mSuccessfully sent username to server\x1b[0m\n");
   return client;
 }
 
-void client_connect(int server_fd, client_t *client) {
+int client_connect(int server_fd, client_t *client) {
   printf("\x1b[33;1mAttempting to connect to server\x1b[0m\r\n");
   struct sockaddr_in server_addr = {.sin_family = AF_INET,
                                     .sin_addr = INADDR_ANY,
@@ -132,7 +121,9 @@ void client_connect(int server_fd, client_t *client) {
   int connect_status =
       connect(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
   if (connect_status == -1 && server_fd == client->socket) {
-    return;
+    // NOTE: This means that we have already attempted to connect to the
+    // server and were not successful
+    return -1;
   } else if (connect_status == -1) {
     handle_sock_error(errno);
     client_disconnect(client);
@@ -145,12 +136,12 @@ void client_connect(int server_fd, client_t *client) {
   // NOTE: THESE ARE DECIDED BY THE SERVER
   client->client_id = -1;
   client->player_type = SPECTATOR;
+
+  return 0;
 }
 
 void client_disconnect(client_t *client) {
   printf("\x1b[33;1mAttempting to disconnect from server\x1b[0m\n");
-  printf("\x1b[33;1mAttempting to disconnect (%d) from server\x1b[0m\n",
-         client->socket);
   int close_status = close(client->socket);
   if (close_status == -1) {
     handle_sock_error(errno);

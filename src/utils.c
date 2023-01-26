@@ -302,57 +302,143 @@ void remove_value(HashMap *map, int key) {
 }
 
 void handle_sock_error(int err) {
+  char *error_message;
   switch (err) {
   case EACCES:
-    perror("\x1b[31;1mPermission to create a socket of the specified type "
+    error_message =
+        "\x1b[41;30;1mSorry, you do not have permission to do "
+        "that.\r\n\x1b[0;0m"
+        "\x1b[43;30;1mThere isn't really anything we can do to help you. Maybe "
+        "get in touch with one of your seniors!\x1b[0;0m";
+    printf("%s\r\n\x1b[0;0m", error_message);
+    perror("\x1b[41;30;1mPermission to create a socket of the specified type "
            "and/or to bind to the specified port is denied.\x1b[0m\n");
     break;
   case EADDRINUSE:
-    perror("\x1b[31;1mThe given address is already in use.\x1b[0m\n");
-    break;
-  case EADDRNOTAVAIL:
-    perror("\x1b[31;1mThe specified address is not available from the local "
-           "machine.\x1b[0m\n");
+    error_message =
+        "\x1b[41;30;1mSorry, you can't do that: the address is already in "
+        "use\r\n\x1b[0;0m"
+        "\x1b[43;30;1mIf you are trying to launch the server, make sure that"
+        "you've not already got one running!";
+    printf("%s\r\n\x1b[0;0m", error_message);
+    perror("\x1b[41;30;1mThe given address is already in use.\x1b[0m\n");
     break;
   case EAFNOSUPPORT:
+    error_message =
+        "\x1b[41;30;1mSorry, you can't do that: the address family is not "
+        "supported"
+        "\x1b[43;30;1mIf this is happening to you, please contact the "
+        "developer!";
+    printf("%s\r\n\x1b[0;0m", error_message);
     perror("Addresses in the specified family cannot be used with this "
            "socket.\x1b[0m\n");
     break;
   case EINVAL:
-    perror("\x1b[31;1mThe socket is already bound to an address.\x1b[0m\n");
+    error_message =
+        "\x1b[41;30;1mSorry, you can't do that: the address is already in "
+        "use\r\n\x1b[0;0m"
+        "\x1b[43;30;1mIf you are trying to launch the server, make sure that"
+        "you've not already got one running!";
+    printf("%s\r\n\x1b[0;0m", error_message);
+    perror("\x1b[41;30;1mThe socket is already bound to an address.\x1b[0m\n");
     break;
   case EMFILE:
-    perror("\x1b[31;1mThe process already has the maximum number of files "
+    error_message =
+        "\x1b[41;30;1mSorry, you can't do that: the process already has the "
+        "maximum number of files open\r\n\x1b[0;0m"
+        "\x1b[43;30;1mIf this is happening to you, please contact the "
+        "developer!";
+    printf("%s\r\n\x1b[0;0m", error_message);
+    perror("\x1b[41;30;1mThe process already has the maximum number of files "
            "open.\x1b[0m\n");
     break;
   case ENFILE:
-    perror("\x1b[31;1mThe system limit on the total number of open files has "
-           "been reached.\x1b[0m\n");
+    error_message =
+        "\x1b[41;30;1mSorry, you can't do that: the system limit on the "
+        "total number of open files has been reached\r\n\x1b[0;0m"
+        "\x1b[43;30;1mYou may be able to fix this by closing some other "
+        "applications."
+        "\x1b[0;0m";
+    printf("%s\r\n\x1b[0;0m", error_message);
+    perror(
+        "\x1b[41;30;1mThe system limit on the total number of open files has "
+        "been reached.\x1b[0m\n");
     break;
   case ENOBUFS:
-    perror("\x1b[31;1mInsufficient resources were available in the system to "
-           "perform the operation.\x1b[0m\n");
+    error_message =
+        "\x1b[41;30;1mSorry, you can't do that: insufficient resources were "
+        "available in the system to perform the operation\r\n\x1b[0;0m"
+        "\x1b[43;30;1mYou may be able to fix this by closing some other "
+        "applications."
+        "\x1b[0;0m";
+    printf("%s\r\n\x1b[0;0m", error_message);
+    perror(
+        "\x1b[41;30;1mInsufficient resources were available in the system to "
+        "perform the operation.\x1b[0m\n");
     break;
   case ENOMEM:
-    perror("\x1b[31;1mInsufficient memory was available to fulfill the "
+    error_message =
+        "\x1b[41;30;1mSorry, you can't do that: insufficient memory was "
+        "available to fulfill the request\r\n\x1b[0;0m"
+        "\x1b[43;30;1mYou may be able to fix this by closing some other "
+        "applications."
+        "\x1b[0;0m";
+    printf("%s\r\n\x1b[0;0m", error_message);
+    perror("\x1b[41;30;1mInsufficient memory was available to fulfill the "
            "request.\x1b[0m\n");
     break;
   case EPROTONOSUPPORT:
-    perror("\x1b[31;1mThe protocol type or the specified protocol is not "
+    error_message =
+        "\x1b[41;30;1mSorry, something went wrong!\r\n\x1b[0;0m"
+        "\x1b[43;30;1mIf this is happening to you, please contact the "
+        "developer!";
+    printf("%s\r\n\x1b[0;0m", error_message);
+    perror("\x1b[41;30;1mThe protocol type or the specified protocol is not "
            "supported within this domain.\x1b[0m\n");
     break;
   case EPROTOTYPE:
-    perror("\x1b[31;1mThe protocol type is the wrong type for this "
+    error_message =
+        "\x1b[41;30;1mSorry, something went wrong!\r\n\x1b[0;0m"
+        "\x1b[43;30;1mIf this is happening to you, please contact the "
+        "developer!";
+    printf("%s\r\n\x1b[0;0m", error_message);
+    perror("\x1b[41;30;1mThe protocol type is the wrong type for this "
            "socket.\x1b[0m\n");
     break;
   case ESOCKTNOSUPPORT:
-    perror("\x1b[31;1mThe socket type is not supported in this address "
+    error_message =
+        "\x1b[41;30;1mSorry, something went wrong!\r\n\x1b[0;0m"
+        "\x1b[43;30;1mIf this is happening to you, please contact the "
+        "developer!";
+    printf("%s\r\n\x1b[0;0m", error_message);
+    perror("\x1b[41;30;1mThe socket type is not supported in this address "
            "family.\x1b[0m\n");
     break;
   case ECONNREFUSED:
-    perror("\x1b[31;1mNo one listening on the remote address.\x1b[0m\n");
+    error_message =
+        "\x1b[41;30;1mSorry, you can't do that: no one is listening on the "
+        "remote address\r\n\x1b[0;0m"
+        "\x1b[43;30;1mIf you are trying to connect to the server, make sure "
+        "that you've launched it!";
+    printf("%s\r\n\x1b[0;0m", error_message);
+    perror("\x1b[41;30;1mNo one listening on the remote address.\x1b[0m\n");
+    break;
+  case EADDRNOTAVAIL:
+    error_message =
+        "\x1b[41;30;1mSorry, you can't do that: the specified address is not "
+        "available from the local machine\r\n\x1b[0;0m"
+        "\x1b[43;30;1mIf you are trying to connect to the server, make sure "
+        "that you've launched it or that it hasn't crashed!";
+    printf("%s\r\n\x1b[0;0m", error_message);
+    perror("\x1b[41;30;1mThe specified address is not available from the "
+           "local machine.\x1b[0m\n");
     break;
   default:
+    error_message =
+        "\x1b[41;30;1mSorry, something went wrong!\r\n\x1b[0;0m"
+        "\x1b[43;30;1mIf this is happening to you, please contact the "
+        "developer and include the following error code:";
+    printf("%s\r\n\x1b[0;0m", error_message);
     fprintf(stderr, "Unknown error: %d\x1b[0m\n", err);
     break;
   }

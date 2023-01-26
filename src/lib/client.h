@@ -64,4 +64,6 @@ void client_disconnect(client_t *client);
  */
 void handle_sock_error(int err);
 #endif
+
+void print_buffer(char *buf);
 #endif

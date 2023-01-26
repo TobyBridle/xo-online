@@ -19,8 +19,8 @@ int main() {
     // Check if we have a connection
     // The first thing we will receive is the client ID
 
-    int poll_status =
-        poll(fds, 1, client_id == -1 ? RECONNECT_INTERVAL * 1000 : 100);
+    int poll_interval = client_id == -1 ? RECONNECT_INTERVAL * 1000 : 100;
+    int poll_status = poll(fds, 1, poll_interval);
     char peek_buf[7] = {0};
     if (poll_status > 0) {
       int read_status = recv(client->socket, peek_buf, 7, MSG_PEEK);
@@ -47,7 +47,7 @@ int main() {
           printf("\x1b[32;1mConnected to server as client %s\x1b[0m\r\n",
                  buffer);
         }
-        printf("%s\r\n", buffer);
+        print_buffer(buffer);
       } else if (fds[0].revents & POLL_ERR) {
         printf("\x1b[31;1mError occurred\x1b[0m\r\n");
       }
@@ -150,4 +150,12 @@ void client_disconnect(client_t *client) {
   }
   printf("\x1b[32;1mSuccessfully disconnected from server\x1b[0m\n");
   free(client);
+}
+
+void print_buffer(char *buf) {
+  char *token = strtok(buf, "\n");
+  while (token != NULL) {
+    printf("%s\r\n", token);
+    token = strtok(NULL, "\n");
+  }
 }

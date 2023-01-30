@@ -46,6 +46,7 @@ int main() {
 
           printf("\x1b[32;1mConnected to server as client %s\x1b[0m\r\n",
                  buffer);
+          client->client_id = client_id;
         }
         print_buffer(buffer);
       } else if (fds[0].revents & POLL_ERR) {
@@ -70,6 +71,7 @@ int main() {
       }
     }
   }
+
   disable_raw_term();
   client_disconnect(client);
   return 0;
@@ -135,6 +137,7 @@ int client_connect(int server_fd, client_t *client) {
 
   // NOTE: THESE ARE DECIDED BY THE SERVER
   client->client_id = -1;
+  client->client_name = NULL;
   client->player_type = SPECTATOR;
 
   return 0;

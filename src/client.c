@@ -77,6 +77,9 @@ int main() {
   return 0;
 }
 
+void hide_term_cursor() { printf("\033[?25l"); }
+void show_term_cursor() { printf("\033[?25h"); }
+
 void enable_raw_term() {
   tcgetattr(STDIN_FILENO, &restore);
   atexit(disable_raw_term);
@@ -94,9 +97,13 @@ void enable_raw_term() {
   noughts_crosses_term.c_cc[VTIME] = 1;
 
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &noughts_crosses_term);
+  hide_term_cursor();
 }
 
-void disable_raw_term() { tcsetattr(STDIN_FILENO, TCSAFLUSH, &restore); }
+void disable_raw_term() {
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &restore);
+  show_term_cursor();
+}
 
 client_t *client_init() {
   client_t *client = (client_t *)malloc(sizeof(client_t));

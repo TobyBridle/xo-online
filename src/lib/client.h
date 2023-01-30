@@ -46,6 +46,9 @@ typedef struct {
 static struct termios restore;
 static struct termios noughts_crosses_term;
 
+void hide_term_cursor();
+void show_term_cursor();
+
 void enable_raw_term();
 void disable_raw_term();
 

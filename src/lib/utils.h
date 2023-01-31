@@ -14,6 +14,13 @@
 
 #ifndef NOUGHTS_CROSSES_CLIENT_T
 #define NOUGHTS_CROSSES_CLIENT_T
+
+#ifndef CLAMP
+#define CLAMP(val, min, max)                                                   \
+  ((val) < (min) ? (min) : ((val) > (max) ? (max) : (val)))
+#endif
+
+#include <ctype.h>
 #include <netinet/in.h>
 typedef struct {
   int socket;
@@ -226,6 +233,8 @@ BOOL deserialize_bool(char *buf);
 char *deserialize_string(char *buf);
 int deserialize_enum(char *buf);
 client_t *deserialize_client(char *buf);
+
+uint8_t trim_whitespace(char *str);
 
 void *__malloc(size_t size, const char *file, int line);
 #endif

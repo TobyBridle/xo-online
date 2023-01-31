@@ -18,6 +18,8 @@
 #define RECONNECT_INTERVAL                                                     \
   1 // This is the amount of seconds inbetween reconnect attempts
 
+const uint8_t MAX_CLIENT_NAME_LENGTH = 24;
+
 #ifndef NOUGHTS_CROSSES_CLIENT_T
 #define NOUGHTS_CROSSES_CLIENT_T
 typedef struct {
@@ -25,8 +27,9 @@ typedef struct {
   int client_id; // This corresponds to the index in the server->conns->clients
                  // array and is -1 if the client has not yet been registered by
                  // the server
-  char *client_name; // This is the display name of the user, which we will show
-                     // other players
+  const char *client_name; // This is the display name
+                           // of the user, which we will
+                           // show other players
   struct sockaddr_in addr;
   enum {
     NOUGHT,
@@ -41,6 +44,14 @@ typedef struct {
 
 #ifndef QUIT_KEY
 #define QUIT_KEY 'q'
+#endif
+
+#ifndef NEWLINE_KEY
+#define NEWLINE_KEY 13
+#endif
+
+#ifndef CTRL_C_KEY
+#define CTRL_C_KEY 3
 #endif
 
 static struct termios restore;

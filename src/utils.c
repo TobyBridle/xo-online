@@ -644,6 +644,33 @@ client_t *deserialize_client(char *buf) {
   return client;
 }
 
+uint8_t trim_whitespace(char *str) {
+  uint8_t spaces_trimmed = 0;
+  uint str_len = strlen(str);
+
+  // Trim trailing whitespaces
+  while (str_len > 0 && isspace(str[str_len - 1])) {
+    str[--str_len] = '\0';
+    spaces_trimmed++;
+  }
+
+  // Trim preceding whitespaces
+  uint start = 0;
+  while (isspace(str[start])) {
+    start++;
+    spaces_trimmed++;
+  }
+
+  // Shift remaining characters to the left
+  uint i = 0;
+  for (int j = start; j < str_len; j++) {
+    str[i++] = str[j];
+  }
+  str[i] = '\0';
+
+  return spaces_trimmed;
+}
+
 void *__malloc(size_t size, const char *file, int line) {
   printf("Attempting to allocate memory!\n");
   void *ptr = malloc(size);

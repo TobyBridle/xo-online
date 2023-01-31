@@ -5,6 +5,12 @@
 
 int main() {
   client_t *client = client_init();
+  // Initially, requires_username will be TRUE when the client_id is first
+  // sent through. It'll then remain as true until the enter key is pressed when
+  // entering the name.
+  BOOL requires_username;
+  uint8_t client_name_length = 0;
+
   char buffer[1024];
   struct pollfd fds[1];
   fds[0].fd = client->socket;
@@ -47,6 +53,7 @@ int main() {
           printf("\x1b[32;1mConnected to server as client %s\x1b[0m\r\n",
                  buffer);
           client->client_id = client_id;
+          requires_username = TRUE;
         }
         print_buffer(buffer);
       } else if (fds[0].revents & POLL_ERR) {
@@ -61,12 +68,71 @@ int main() {
     }
 
     // Check if input
-    if (read(STDIN_FILENO, &c, 1) == 1) {
+    int input_status = read(STDIN_FILENO, &c, 1);
+
+    if (requires_username) {
+      if (input_status < 1) {
+        printf("\033[s");        // save cursor position
+        printf("\033[%d;0H", 7); // move cursor to y-coordinate 7
+        printf("\033[;1mPlease Enter your Name:\x1b[;0m\r\n");
+      }
+      // We have had some input and after we have
+      // finished our conditions we will have to flush the output.
+      else if (c == CTRL_C_KEY) {
+        fds[0].fd = -1;
+        break;
+      } else if (c != NEWLINE_KEY &&
+                 client_name_length < MAX_CLIENT_NAME_LENGTH) {
+        // NOTE: `8` is the ASCII code for Backspace and 127 is DEL
+        int difference = !(c == 8 || c == 127) ? 1 : -1;
+        client_name_length =
+            CLAMP(client_name_length + difference, 1, MAX_CLIENT_NAME_LENGTH);
+        if (difference == -1) {
+          client_name_length = strlen(client->client_name);
+          client->client_name[--client_name_length] = '\0';
+        } else
+          client->client_name[client_name_length - 1] = c;
+      } else if (c == NEWLINE_KEY ||
+                 client_name_length + 1 == MAX_CLIENT_NAME_LENGTH) {
+        uint8_t trimmed_amount = trim_whitespace(client->client_name);
+
+        // We can only carry on if the user entered something that
+        // wasn't just whitespace
+
+        if (trimmed_amount < client_name_length) {
+          requires_username = FALSE;
+          char *encoded_username = serialize_string(client->client_name);
+          while (send(fds[0].fd, encoded_username, 1024, 0) < 1)
+            ;
+          free(encoded_username);
+          printf("\033[%d;0H", 6); // Move to the line above the input dialog
+          printf("\033[s");
+          printf("\033[J"); // Clear the screen below that line
+        }
+        client_name_length -= trimmed_amount;
+      }
+
+      // NOTE: This may have been changed in an above statement
+      // which is why we must check it once more.
+      if (requires_username) {
+        printf("\033[%d;0H", 8); // move cursor to y-coordinate 8
+
+        // NOTE: We need to clear the whole line before re-drawing
+        // to prevent excess chars that have been deleted from rendering
+        printf("\033[2K");
+
+        printf("%s\r\n", client->client_name);
+        printf("\033[u"); // restore cursor position
+      }
+
+      fflush(stdout);
+
+    } else if (input_status > 0) {
       switch (c) {
       case QUIT_KEY:
-      case 3:
-        fds[0].fd = -1; // NOTE: This will prevent polls from occuring and will
-                        // break our loop
+      case CTRL_C_KEY:
+        fds[0].fd = -1; // NOTE: This will prevent polls from occuring and
+                        // will break our loop
         break;
       }
     }
@@ -144,7 +210,7 @@ int client_connect(int server_fd, client_t *client) {
 
   // NOTE: THESE ARE DECIDED BY THE SERVER
   client->client_id = -1;
-  client->client_name = NULL;
+  client->client_name = calloc(MAX_CLIENT_NAME_LENGTH, sizeof(char));
   client->player_type = SPECTATOR;
 
   return 0;
@@ -155,10 +221,12 @@ void client_disconnect(client_t *client) {
   int close_status = close(client->socket);
   if (close_status == -1) {
     handle_sock_error(errno);
+    free(client->client_name);
     free(client);
     exit(1);
   }
   printf("\x1b[32;1mSuccessfully disconnected from server\x1b[0m\n");
+  free(client->client_name);
   free(client);
 }
 

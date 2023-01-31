@@ -105,9 +105,16 @@ int main() {
           while (send(fds[0].fd, encoded_username, 1024, 0) < 1)
             ;
           free(encoded_username);
-          printf("\033[%d;0H", 6); // Move to the line above the input dialog
-          printf("\033[s");
-          printf("\033[J"); // Clear the screen below that line
+
+          // NOTE: We need to wait for a heads-up from the server that we were
+          // successful.
+          recv(fds[0].fd, buffer, 1024, 0);
+          if (deserialize_int(buffer) == 1) {
+            printf("\033[%d;0H", 6); // Move to the line above the input dialog
+            printf("\033[s");
+            printf("\033[J"); // Clear the screen below that line
+            requires_username = FALSE;
+          }
         }
         client_name_length -= trimmed_amount;
       }

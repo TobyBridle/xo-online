@@ -6,15 +6,22 @@
 #define PORT 80
 
 volatile sig_atomic_t server_interrupted = 0;
+
 void server_sigint(int sig) {
   printf("\x1b[33;1mAttempting to disconnect from server\x1b[0m\n");
   server_interrupted = 1;
 }
 
+char *accepted_name_s_string, *rejected_name_s_string;
+
 /* pthread_t server_thread; */
 /* pthread_t game_handling_thread; */
 
 int main() {
+
+  accepted_name_s_string = serialize_int(1);
+  rejected_name_s_string = serialize_int(-1);
+
   // Initialize the server
   server_t *server = server_init(PORT);
   int listen_status = server_listen(server);
@@ -115,6 +122,7 @@ client_t server_accept(server_t *server) {
   printf("\x1b[33;1mAttempting to accept client\x1b[0m\n");
   client->socket = client_socket;
   client->addr = client_addr;
+  client->client_name = NULL;
   client->player_type = SPECTATOR;
 
   // We need to get the next available ID
@@ -160,6 +168,9 @@ void server_serve(server_t *server) {
   fds[0].fd = server->socket;
   fds[0].events = POLLIN;
 
+  char peek_buf[1] = {0};
+  char buf[1024] = {};
+
   // If there is a new connection, we want to call
   // `server_accept` and add the client to the list of clients
   loop {
@@ -197,18 +208,35 @@ void server_serve(server_t *server) {
       client = ret.client;
 
       // Check if the client has disconnected
-      char buf[1] = {0};
-      int recv_status = recv(client->socket, buf, 1, MSG_PEEK);
+      int recv_status = recv(client->socket, peek_buf, 1, MSG_PEEK);
       if (recv_status > 0) {
-        // NOTE: Even though we do not register it,
-        // we must consume the input so that it does not linger
-        // and affect the recv calls if the client disconnects.
-        recv(client->socket, NULL, 1024, 0);
+        recv(client->socket, buf, 1024, 0); // Accept the whole buffer
+
+        // If the client does not have a name, we can assume that the buffer
+        // contains their name.
+        if (client->client_name == NULL) {
+          char *name = deserialize_string(buf);
+          uint8_t name_length = strlen(name);
+          uint8_t trimmed_length = trim_whitespace(name);
+
+          if (trimmed_length == name_length ||
+              name_length > MAX_CLIENT_NAME_LENGTH) {
+            send(client->socket, rejected_name_s_string, 1024, 0);
+          } else {
+            client->client_name = name;
+            send(client->socket, accepted_name_s_string, 1024, 0);
+            printf("Say hello to %s!\n", client->client_name);
+          }
+        }
       } else if (recv_status == 0) {
         // The client has disconnected
-        printf("\x1b[31;1mClient %d has disconnected\x1b[0m\n", client_id);
+        printf("\x1b[31;1mClient %d (%s) has disconnected\x1b[0m\n", client_id,
+               client->client_name);
         // Close the socket
         close(client->socket);
+
+        if (client->client_name != NULL)
+          free(client->client_name);
         // Free the client
         free(client);
         // Remove the client from the hashmap
@@ -237,6 +265,7 @@ void server_serve(server_t *server) {
         char *client_id = calloc(length, sizeof(char));
         sprintf(client_id, "%d", client.client_id);
         send(client.socket, client_id, 1024, 0);
+        free(client_id);
 
         send(client.socket, clear_screen.s_string, 1024, 0);
         send(client.socket, main_menu.s_string, 1024, 0);
@@ -257,6 +286,7 @@ int server_unbind(server_t *server) {
   // TODO: Implement freeing and closing of sockets.
   int entry_id;
   client_t *client;
+
   // NOTE: This block is almost identical
   // To the `free_hashmap(&map)` function, with the difference
   // being that we get the client from the map and then close it.
@@ -268,8 +298,7 @@ int server_unbind(server_t *server) {
     remove_value(&server->clients, entry_id);
   }
 
-  free(server->clients.buckets);
-  free(server->clients.entry_ids);
+  free_hashmap(&server->clients);
   free(server);
 
   printf("\x1b[33;1mAttempting to kill server instance now\x1b[0;0m\n");

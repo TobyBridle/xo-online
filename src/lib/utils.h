@@ -36,6 +36,13 @@ typedef struct {
     SPECTATOR
   } player_type; // Spectator by default, so that the user cannot interact with
                  // any games
+  enum {
+    SETUP_PAGE, // This includes the initial connection page,
+                // and name entering
+    HOME_PAGE,
+    IN_GAME_PAGE,
+    SPECTATOR_PAGE,
+  } screen_state;
 } client_t;
 #endif
 
@@ -235,6 +242,7 @@ int deserialize_enum(char *buf);
 client_t *deserialize_client(char *buf);
 
 uint8_t trim_whitespace(char *str);
+BOOL is_valid_input_key(char c);
 
 void *__malloc(size_t size, const char *file, int line);
 #endif

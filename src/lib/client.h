@@ -20,26 +20,6 @@
 
 const uint8_t MAX_CLIENT_NAME_LENGTH = 24;
 
-#ifndef NOUGHTS_CROSSES_CLIENT_T
-#define NOUGHTS_CROSSES_CLIENT_T
-typedef struct {
-  int socket;
-  int client_id; // This corresponds to the index in the server->conns->clients
-                 // array and is -1 if the client has not yet been registered by
-                 // the server
-  const char *client_name; // This is the display name
-                           // of the user, which we will
-                           // show other players
-  struct sockaddr_in addr;
-  enum {
-    NOUGHT,
-    CROSS,
-    SPECTATOR
-  } player_type; // Spectator by default, so that the user cannot interact with
-                 // any games
-} client_t;
-#endif
-
 /* ------------------------------------------------------------------------ */
 
 #ifndef QUIT_KEY

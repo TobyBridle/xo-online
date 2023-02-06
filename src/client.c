@@ -81,7 +81,7 @@ int main() {
       else if (c == CTRL_C_KEY) {
         fds[0].fd = -1;
         break;
-      } else if (c != NEWLINE_KEY &&
+      } else if (c != NEWLINE_KEY && is_valid_input_key(c) &&
                  client_name_length < MAX_CLIENT_NAME_LENGTH) {
         // NOTE: `8` is the ASCII code for Backspace and 127 is DEL
         int difference = !(c == 8 || c == 127) ? 1 : -1;
@@ -114,6 +114,7 @@ int main() {
             printf("\033[%d;0H", 6); // Move to the line above the input dialog
             printf("\033[s");
             printf("\033[J"); // Clear the screen below that line
+            client->screen_state = HOME_PAGE;
             requires_username = FALSE;
           }
         }
@@ -141,6 +142,12 @@ int main() {
       case CTRL_C_KEY:
         fds[0].fd = -1; // NOTE: This will prevent polls from occuring and
                         // will break our loop
+        break;
+      case '2':
+        if (client->screen_state == HOME_PAGE) {
+          fds[0].fd = -1;
+          break;
+        }
         break;
       }
     }
@@ -191,6 +198,8 @@ client_t *client_init() {
   if (!did_connect) {
     client->socket = socket_fd;
   }
+
+  client->screen_state = SETUP_PAGE;
 
   return client;
 }

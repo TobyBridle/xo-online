@@ -671,6 +671,18 @@ uint8_t trim_whitespace(char *str) {
   return spaces_trimmed;
 }
 
+BOOL is_valid_input_key(char c) {
+  // Check if the key is arrows or CTRL+<char> (CTRL+a -> 1, CTRL+b -> 2, CTRL+c
+  // -> 3 etc)
+  if (c == 27) { // 27 is the ASCII value of the escape character
+    return FALSE;
+  } else if (c > 0 && c < 26) {
+    // Handle CTRL+<char>
+    return FALSE;
+  }
+  return TRUE;
+}
+
 void *__malloc(size_t size, const char *file, int line) {
   printf("Attempting to allocate memory!\n");
   void *ptr = malloc(size);

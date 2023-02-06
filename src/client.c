@@ -88,7 +88,8 @@ int main() {
         client_name_length =
             CLAMP(client_name_length + difference, 1, MAX_CLIENT_NAME_LENGTH);
         if (difference == -1) {
-          client_name_length = strlen(client->client_name);
+          client_name_length =
+              CLAMP(strlen(client->client_name), 1, MAX_CLIENT_NAME_LENGTH);
           client->client_name[--client_name_length] = '\0';
         } else
           client->client_name[client_name_length - 1] = c;

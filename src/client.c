@@ -137,13 +137,30 @@ int main() {
       fflush(stdout);
 
     } else if (input_status > 0) {
+      char *serialized;
       switch (c) {
       case QUIT_KEY:
       case CTRL_C_KEY:
         fds[0].fd = -1; // NOTE: This will prevent polls from occuring and
                         // will break our loop
         break;
+      case '1':
+        if (client->screen_state == HOME_PAGE) { // View the existing games
+          serialized = serialize_int(1);
+          send(fds[0].fd, serialized, 1024, 0);
+          free(serialized);
+          // TODO: TRANSITION TO VIEWING GAMES STATE
+          // NOTE: WE COULD ADD SOME SORT OF RENDERING TEMPLATE??
+        }
+        break;
       case '2':
+        if (client->screen_state == HOME_PAGE) { // Create a New Game
+          serialized = serialize_int(2);
+          send(fds[0].fd, serialized, 1024, 0);
+          free(serialized);
+        }
+        break;
+      case '3':
         if (client->screen_state == HOME_PAGE) {
           fds[0].fd = -1;
           break;

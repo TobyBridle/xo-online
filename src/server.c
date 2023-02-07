@@ -124,6 +124,7 @@ client_t server_accept(server_t *server) {
   client->addr = client_addr;
   client->client_name = NULL;
   client->player_type = SPECTATOR;
+  client->screen_state = SETUP_PAGE;
 
   // We need to get the next available ID
   // Since the entry_ids are ordered in ascending
@@ -138,7 +139,7 @@ client_t server_accept(server_t *server) {
     next_id = 1;
   } else {
     while (current != NULL) {
-      if ((uint)current->data != next_id) {
+      if ((uint)current->data.i_value != next_id) {
         break;
       }
       next_id++;
@@ -160,7 +161,6 @@ client_t server_accept(server_t *server) {
 
 void server_serve(server_t *server) {
   printf("\x1b[33;1mAttempting to serve clients\x1b[0m\n");
-  signal(SIGINT, server_sigint);
   server->state = ACCEPTING;
 
   // We want to use `poll` to check for new connections
@@ -174,7 +174,7 @@ void server_serve(server_t *server) {
   // If there is a new connection, we want to call
   // `server_accept` and add the client to the list of clients
   loop {
-
+    signal(SIGINT, server_sigint);
     if (server_interrupted) {
       server_unbind(server);
     }
@@ -199,7 +199,7 @@ void server_serve(server_t *server) {
       } else {
         next_entry_id = &entry_id.next;
       }
-      int client_id = entry_id.data;
+      int client_id = entry_id.data.i_value;
       ret = get(server->clients, client_id);
       if (ret.err == -1) {
         head = entry_id.next;
@@ -226,7 +226,42 @@ void server_serve(server_t *server) {
             client->client_name = name;
             send(client->socket, accepted_name_s_string, 1024, 0);
             printf("Say hello to %s!\n", client->client_name);
+            client->screen_state = HOME_PAGE;
           }
+        } else if (deserialize_int(buf) == 1 &&
+                   client->screen_state == HOME_PAGE) {
+          struct node *ret = server->games.head;
+          game_t *game;
+
+          int formatted_length;
+          char *formatted;
+          char *serialized;
+          while (ret != NULL) {
+            game = ret->data.pointer;
+            formatted_length =
+                snprintf(NULL, 0, "%s's Game\t[%d/2]\n",
+                         game->players[0]->client_name, game->isFull ? 2 : 1);
+            formatted = calloc(formatted_length, sizeof(char));
+            sprintf(formatted, "%s's Game\t[%d/2]\n",
+                    game->players[0]->client_name, game->isFull ? 2 : 1);
+            serialized = serialize_string(formatted);
+
+            send(client->socket, serialized, 1024, 0);
+            free(serialized);
+            free(formatted);
+            formatted_length = 0;
+            ret = ret->next;
+          }
+        } else if (deserialize_int(buf) == 2 &&
+                   client->screen_state == HOME_PAGE) {
+          // Create New Game
+          if (client->screen_state == IN_GAME_PAGE)
+            return;
+          game_t *game = malloc(sizeof(game_t));
+          memset(game, 0, sizeof(game_t));
+          game->players[0] = client;
+          push_node(&server->games, (NodeValue){.pointer = game});
+          client->screen_state = IN_GAME_PAGE;
         }
       } else if (recv_status == 0) {
         // The client has disconnected
@@ -284,18 +319,18 @@ void server_start(server_t *server) {
 
 int server_unbind(server_t *server) {
   // TODO: Implement freeing and closing of sockets.
-  int entry_id;
+  NodeValue entry_id;
   client_t *client;
 
   // NOTE: This block is almost identical
   // To the `free_hashmap(&map)` function, with the difference
   // being that we get the client from the map and then close it.
-  while ((entry_id = pop_node(server->clients.entry_ids)) != -1) {
-    client = get(server->clients, entry_id).client;
+  while ((entry_id = pop_node(server->clients.entry_ids)).err != -1) {
+    client = get(server->clients, entry_id.i_value).client;
     close(client->socket);
     printf("\x1b[32;1mClosed connection from Client %d\x1b[0;0m\n",
            client->client_id);
-    remove_value(&server->clients, entry_id);
+    remove_value(&server->clients, entry_id.i_value);
   }
 
   free_hashmap(&server->clients);

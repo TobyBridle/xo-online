@@ -4,15 +4,15 @@
 
 TestResult test_push() {
   LinkedList *list = init_list();
-  push_node(list, 1);
-  push_node(list, 2);
-  EXPECT_EQ(list->head->data, 1);
-  EXPECT_EQ(list->head->next->data, 2);
-  EXPECT_EQ(list->tail->data, 2);
-  push_node(list, 3);
-  EXPECT_EQ(list->head->next->next->data, 3);
-  EXPECT_EQ(list->tail->data, 3);
-  EXPECT_EQ(list->head->next->data, 2);
+  push_node(list, (NodeValue){.i_value = 1});
+  push_node(list, (NodeValue){.i_value = 2});
+  EXPECT_EQ(list->head->data.i_value, 1);
+  EXPECT_EQ(list->head->next->data.i_value, 2);
+  EXPECT_EQ(list->tail->data.i_value, 2);
+  push_node(list, (NodeValue){.i_value = 3});
+  EXPECT_EQ(list->head->next->next->data.i_value, 3);
+  EXPECT_EQ(list->tail->data.i_value, 3);
+  EXPECT_EQ(list->head->next->data.i_value, 2);
 
   free_list(list);
   return SUCCESS;
@@ -20,15 +20,15 @@ TestResult test_push() {
 
 TestResult test_pop() {
   LinkedList *list = init_list();
-  push_node(list, 1);
-  push_node(list, 2);
-  push_node(list, 3);
+  push_node(list, (NodeValue){.i_value = 1});
+  push_node(list, (NodeValue){.i_value = 2});
+  push_node(list, (NodeValue){.i_value = 3});
 
   // NOTE: The LinkedList is a FIFO data structure
-  EXPECT_EQ(pop_node(list), 1);
-  EXPECT_EQ(pop_node(list), 2);
-  EXPECT_EQ(pop_node(list), 3);
-  EXPECT_EQ(pop_node(list), -1);
+  EXPECT_EQ(pop_node(list).i_value, 1);
+  EXPECT_EQ(pop_node(list).i_value, 2);
+  EXPECT_EQ(pop_node(list).i_value, 3);
+  EXPECT_EQ(pop_node(list).err, -1);
 
   free_list(list);
   return SUCCESS;
@@ -36,15 +36,15 @@ TestResult test_pop() {
 
 TestResult test_remove() {
   LinkedList *list = init_list();
-  push_node(list, 1);
-  push_node(list, 2);
-  push_node(list, 3);
+  push_node(list, (NodeValue){.i_value = 1});
+  push_node(list, (NodeValue){.i_value = 2});
+  push_node(list, (NodeValue){.i_value = 3});
 
   // NOTE: The LinkedList is a FIFO data structure
-  EXPECT_EQ(remove_node(list, 1), 0);
-  EXPECT_EQ(remove_node(list, 2), 0);
-  EXPECT_EQ(remove_node(list, 3), 0);
-  EXPECT_EQ(remove_node(list, 4), -1);
+  EXPECT_EQ(remove_node(list, (NodeValue){.i_value = 1}), 0);
+  EXPECT_EQ(remove_node(list, (NodeValue){.i_value = 2}), 0);
+  EXPECT_EQ(remove_node(list, (NodeValue){.i_value = 3}), 0);
+  EXPECT_EQ(remove_node(list, (NodeValue){.i_value = 4}), -1);
 
   free_list(list);
   return SUCCESS;
@@ -53,10 +53,10 @@ TestResult test_remove() {
 TestResult test_peek() {
   LinkedList *list = init_list();
   for (int i = 0; i < 1000; ++i) {
-    push_node(list, i);
+    push_node(list, (NodeValue){.i_value = i});
   }
   for (int i = 0; i < 1000; ++i) {
-    EXPECT_EQ(peek_node(list)->data, i);
+    EXPECT_EQ(peek_node(list)->data.i_value, i);
     pop_node(list);
   }
   free_list(list);
@@ -66,18 +66,18 @@ TestResult test_peek() {
 TestResult test_push_pop() {
   LinkedList *list = init_list();
 
-  push_node(list, 1);
-  EXPECT_EQ(peek_node(list)->data, 1);
+  push_node(list, (NodeValue){.i_value = 1});
+  EXPECT_EQ(peek_node(list)->data.i_value, 1);
 
-  push_node(list, 2);
-  EXPECT_EQ(peek_node(list)->data, 1);
+  push_node(list, (NodeValue){.i_value = 2});
+  EXPECT_EQ(peek_node(list)->data.i_value, 1);
 
-  EXPECT_EQ(pop_node(list), 1);
+  EXPECT_EQ(pop_node(list).i_value, 1);
 
-  push_node(list, 1);
-  EXPECT_EQ(peek_node(list)->data, 2);
+  push_node(list, (NodeValue){.i_value = 1});
+  EXPECT_EQ(peek_node(list)->data.i_value, 2);
 
-  EXPECT_EQ(pop_node(list), 2);
+  EXPECT_EQ(pop_node(list).i_value, 2);
 
   free_list(list);
   return SUCCESS;
@@ -86,38 +86,38 @@ TestResult test_push_pop() {
 TestResult test_push_pop_remove() {
   LinkedList *list = init_list();
 
-  push_node(list, 1);
-  EXPECT_EQ(peek_node(list)->data, 1);
-  EXPECT_EQ(list->head->data, 1);
-  EXPECT_EQ(list->tail->data, 1);
+  push_node(list, (NodeValue){.i_value = 1});
+  EXPECT_EQ(peek_node(list)->data.i_value, 1);
+  EXPECT_EQ(list->head->data.i_value, 1);
+  EXPECT_EQ(list->tail->data.i_value, 1);
 
-  push_node(list, 2);
-  EXPECT_EQ(peek_node(list)->data, 1);
-  EXPECT_EQ(list->head->data, 1);
-  EXPECT_EQ(list->head->next->data, 2);
-  EXPECT_EQ(list->tail->data, 2);
+  push_node(list, (NodeValue){.i_value = 2});
+  EXPECT_EQ(peek_node(list)->data.i_value, 1);
+  EXPECT_EQ(list->head->data.i_value, 1);
+  EXPECT_EQ(list->head->next->data.i_value, 2);
+  EXPECT_EQ(list->tail->data.i_value, 2);
 
-  remove_node(list, 1);
-  EXPECT_EQ(peek_node(list)->data, 2);
-  EXPECT_EQ(list->head->data, 2);
-  EXPECT_EQ(list->tail->data, 2);
+  remove_node(list, (NodeValue){.i_value = 1});
+  EXPECT_EQ(peek_node(list)->data.i_value, 2);
+  EXPECT_EQ(list->head->data.i_value, 2);
+  EXPECT_EQ(list->tail->data.i_value, 2);
 
-  push_node(list, 1);
-  EXPECT_EQ(peek_node(list)->data, 2);
-  EXPECT_EQ(list->head->data, 2);
-  EXPECT_EQ(list->tail->data, 1);
-  EXPECT_EQ(list->head->next->data, 1);
+  push_node(list, (NodeValue){.i_value = 1});
+  EXPECT_EQ(peek_node(list)->data.i_value, 2);
+  EXPECT_EQ(list->head->data.i_value, 2);
+  EXPECT_EQ(list->tail->data.i_value, 1);
+  EXPECT_EQ(list->head->next->data.i_value, 1);
 
-  remove_node(list, 1);
-  EXPECT_EQ(peek_node(list)->data, 2);
-  EXPECT_EQ(list->head->data, 2);
-  EXPECT_EQ(list->tail->data, 2);
+  remove_node(list, (NodeValue){.i_value = 1});
+  EXPECT_EQ(peek_node(list)->data.i_value, 2);
+  EXPECT_EQ(list->head->data.i_value, 2);
+  EXPECT_EQ(list->tail->data.i_value, 2);
 
-  push_node(list, 1);
-  EXPECT_EQ(peek_node(list)->data, 2);
-  EXPECT_EQ(list->head->data, 2);
-  EXPECT_EQ(list->tail->data, 1);
-  EXPECT_EQ(list->head->next->data, 1);
+  push_node(list, (NodeValue){.i_value = 1});
+  EXPECT_EQ(peek_node(list)->data.i_value, 2);
+  EXPECT_EQ(list->head->data.i_value, 2);
+  EXPECT_EQ(list->tail->data.i_value, 1);
+  EXPECT_EQ(list->head->next->data.i_value, 1);
 
   free_list(list);
   return SUCCESS;
@@ -125,16 +125,16 @@ TestResult test_push_pop_remove() {
 
 TestResult test_push_at() {
   LinkedList *list = init_list();
-  push_node(list, 1);
-  push_node(list, 2);
-  push_node_at(list, 3, 1);
-  EXPECT_EQ(list->head->data, 1);
-  EXPECT_EQ(list->head->next->data, 3);
-  EXPECT_EQ(list->tail->data, 2);
-  push_node_at(list, 4, 2);
-  EXPECT_EQ(list->head->next->next->data, 4);
-  EXPECT_EQ(list->tail->data, 2);
-  EXPECT_EQ(list->head->next->data, 3);
+  push_node(list, (NodeValue){.i_value = 1});
+  push_node(list, (NodeValue){.i_value = 2});
+  push_node_at(list, (NodeValue){.i_value = 3}, 1);
+  EXPECT_EQ(list->head->data.i_value, 1);
+  EXPECT_EQ(list->head->next->data.i_value, 3);
+  EXPECT_EQ(list->tail->data.i_value, 2);
+  push_node_at(list, (NodeValue){.i_value = 4}, 2);
+  EXPECT_EQ(list->head->next->next->data.i_value, 4);
+  EXPECT_EQ(list->tail->data.i_value, 2);
+  EXPECT_EQ(list->head->next->data.i_value, 3);
 
   return SUCCESS;
 }

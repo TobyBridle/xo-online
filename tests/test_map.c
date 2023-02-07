@@ -100,29 +100,29 @@ TestResult test_entry_ids_without_collisions() {
   put(&map, 4, (BucketValue){.i_value = 4});
   put(&map, 5, (BucketValue){.i_value = 5});
 
-  EXPECT_EQ(map.entry_ids->head->data, 1);
-  EXPECT_EQ(map.entry_ids->head->next->data, 2);
-  EXPECT_EQ(map.entry_ids->head->next->next->data, 3);
-  EXPECT_EQ(map.entry_ids->head->next->next->next->data, 4);
-  EXPECT_EQ(map.entry_ids->head->next->next->next->next->data, 5);
+  EXPECT_EQ(map.entry_ids->head->data.i_value, 1);
+  EXPECT_EQ(map.entry_ids->head->next->data.i_value, 2);
+  EXPECT_EQ(map.entry_ids->head->next->next->data.i_value, 3);
+  EXPECT_EQ(map.entry_ids->head->next->next->next->data.i_value, 4);
+  EXPECT_EQ(map.entry_ids->head->next->next->next->next->data.i_value, 5);
 
   remove_value(&map, 2);
-  EXPECT_EQ(map.entry_ids->head->data, 1);
-  EXPECT_EQ(map.entry_ids->head->next->data, 3);
-  EXPECT_EQ(map.entry_ids->head->next->next->data, 4);
-  EXPECT_EQ(map.entry_ids->head->next->next->next->data, 5);
+  EXPECT_EQ(map.entry_ids->head->data.i_value, 1);
+  EXPECT_EQ(map.entry_ids->head->next->data.i_value, 3);
+  EXPECT_EQ(map.entry_ids->head->next->next->data.i_value, 4);
+  EXPECT_EQ(map.entry_ids->head->next->next->next->data.i_value, 5);
 
   remove_value(&map, 5);
-  EXPECT_EQ(map.entry_ids->head->data, 1);
-  EXPECT_EQ(map.entry_ids->head->next->data, 3);
-  EXPECT_EQ(map.entry_ids->head->next->next->data, 4);
+  EXPECT_EQ(map.entry_ids->head->data.i_value, 1);
+  EXPECT_EQ(map.entry_ids->head->next->data.i_value, 3);
+  EXPECT_EQ(map.entry_ids->head->next->next->data.i_value, 4);
 
   remove_value(&map, 1);
-  EXPECT_EQ(map.entry_ids->head->data, 3);
-  EXPECT_EQ(map.entry_ids->head->next->data, 4);
+  EXPECT_EQ(map.entry_ids->head->data.i_value, 3);
+  EXPECT_EQ(map.entry_ids->head->next->data.i_value, 4);
 
   remove_value(&map, 4);
-  EXPECT_EQ(map.entry_ids->head->data, 3);
+  EXPECT_EQ(map.entry_ids->head->data.i_value, 3);
 
   free_hashmap(&map);
 
@@ -131,11 +131,11 @@ TestResult test_entry_ids_without_collisions() {
     put(&map, i, (BucketValue){.i_value = i});
   }
 
-  EXPECT_EQ(map.entry_ids->head->data, 1);
-  EXPECT_EQ(map.entry_ids->head->next->data, 2);
-  EXPECT_EQ(map.entry_ids->head->next->next->data, 3);
-  EXPECT_EQ(map.entry_ids->head->next->next->next->data, 4);
-  EXPECT_EQ(map.entry_ids->head->next->next->next->next->data, 5);
+  EXPECT_EQ(map.entry_ids->head->data.i_value, 1);
+  EXPECT_EQ(map.entry_ids->head->next->data.i_value, 2);
+  EXPECT_EQ(map.entry_ids->head->next->next->data.i_value, 3);
+  EXPECT_EQ(map.entry_ids->head->next->next->next->data.i_value, 4);
+  EXPECT_EQ(map.entry_ids->head->next->next->next->next->data.i_value, 5);
 
   free_hashmap(&map);
   return SUCCESS;
@@ -145,17 +145,18 @@ TestResult test_entry_ids_with_collisions() {
   HashMap map = new_hashmap(5);
   put(&map, 1, (BucketValue){.i_value = 1});
   put(&map, 6, (BucketValue){.i_value = 6});
-  EXPECT_EQ(map.entry_ids->head->data, 1);
-  EXPECT_EQ(map.entry_ids->tail->data, 6);
+  EXPECT_EQ(map.entry_ids->head->data.i_value, 1);
+  EXPECT_EQ(map.entry_ids->tail->data.i_value, 6);
 
   remove_value(&map, 6);
-  EXPECT_EQ(map.entry_ids->tail->data, 1);
-  EXPECT_EQ(map.entry_ids->head->data, 1);
+  EXPECT_EQ(map.entry_ids->tail->data.i_value, 1);
+  EXPECT_EQ(map.entry_ids->head->data.i_value, 1);
 
   put(&map, 6, (BucketValue){.i_value = 6});
   remove_value(&map, 1);
 
-  EXPECT_EQ(map.entry_ids->head->data, map.entry_ids->tail->data);
+  EXPECT_EQ(map.entry_ids->head->data.i_value,
+            map.entry_ids->tail->data.i_value);
 
   free_hashmap(&map);
   return SUCCESS;

@@ -20,7 +20,7 @@ LinkedList *init_list() {
   return list;
 }
 
-int push_node(LinkedList *list, int value) {
+int push_node(LinkedList *list, NodeValue value) {
   struct node *new_node = (struct node *)_malloc(sizeof(struct node));
   new_node->data = value;
   new_node->next = NULL;
@@ -38,7 +38,7 @@ int push_node(LinkedList *list, int value) {
 }
 
 // Push a node at a specific (0-based) index
-int push_node_at(LinkedList *list, int value, int index) {
+int push_node_at(LinkedList *list, NodeValue value, int index) {
   struct node *new_node = (struct node *)_malloc(sizeof(struct node));
   new_node->data = value;
   new_node->next = NULL;
@@ -74,12 +74,12 @@ int push_node_at(LinkedList *list, int value, int index) {
   return -1;
 }
 
-int pop_node(LinkedList *list) {
+NodeValue pop_node(LinkedList *list) {
   if (list->head == NULL) {
-    return -1;
+    return (NodeValue){.err = -1};
   }
   struct node *head_copy = list->head;
-  int data = head_copy->data;
+  NodeValue data = head_copy->data;
   list->head = list->head->next;
   free(head_copy);
   return data;
@@ -91,14 +91,15 @@ struct node *peek_node(LinkedList *list) {
   return list->head;
 }
 
-int remove_node(LinkedList *list, int predicate) {
+int remove_node(LinkedList *list, NodeValue predicate) {
   if (list->head == NULL) {
     return -1;
   }
   struct node *head = list->head;
   struct node *prev = NULL;
   while (head != NULL) {
-    if (head->data == predicate) {
+    if (head->data.pointer == predicate.pointer ||
+        head->data.i_value == predicate.i_value) {
       if (prev == NULL) {
         list->head = head->next;
       } else {
@@ -122,7 +123,7 @@ int remove_node(LinkedList *list, int predicate) {
 void free_list(LinkedList *list) {
   struct node *head = list->head;
   struct node *next = NULL;
-  while ((pop_node(list)) != -1)
+  while ((pop_node(list)).err != -1)
     ;
   free(list);
 }
@@ -135,7 +136,7 @@ stck_t *init_stack(int max_size) {
   return stack;
 }
 
-int push(stck_t *stack, int value) {
+int push(stck_t *stack, NodeValue value) {
   if (stack->is_full)
     return -1;
   struct node *new_node = (struct node *)calloc(1, sizeof(struct node));
@@ -148,13 +149,13 @@ int push(stck_t *stack, int value) {
   return 0;
 }
 
-int pop(stck_t *stack) {
+NodeValue pop(stck_t *stack) {
   // Check if the stack is empty
-  if (peek(stack) == -1)
-    return -1;
+  if (peek(stack).err == -1)
+    return (NodeValue){.err = -1};
 
   struct node *top = stack->top;
-  int data = stack->top->data;
+  NodeValue data = stack->top->data;
   stack->top = top->next;
 
   free(top);
@@ -165,17 +166,17 @@ int pop(stck_t *stack) {
     stack->is_full = 0;
   return data;
 
-  return -1;
+  return (NodeValue){.err = -1};
 }
 
-int peek(stck_t *stack) {
+NodeValue peek(stck_t *stack) {
   if (stack->top == NULL)
-    return -1;
+    return (NodeValue){.err = -1};
   return stack->top->data;
 }
 
 void free_stack(stck_t *stack) {
-  while (pop(stack) != -1)
+  while (pop(stack).err != -1)
     ;
   free(stack);
 }
@@ -190,9 +191,9 @@ HashMap new_hashmap(int map_size) {
 }
 
 void free_hashmap(HashMap *map) {
-  int entry_id;
-  while ((entry_id = pop_node(map->entry_ids)) != -1) {
-    remove_value(map, entry_id);
+  NodeValue entry_id;
+  while ((entry_id = pop_node(map->entry_ids)).err != -1) {
+    remove_value(map, entry_id.i_value);
   }
 
   free(map->buckets);
@@ -212,13 +213,13 @@ void put(HashMap *map, int key, BucketValue value) {
     // and insert the node after that node
     uint insert_pos = 0;
     struct node *curr = map->entry_ids->head;
-    while (curr != NULL && curr->data < key) {
+    while (curr != NULL && curr->data.i_value < key) {
       curr = curr->next;
       insert_pos++;
     }
 
     // We have the position to insert the node
-    push_node_at(map->entry_ids, key, insert_pos);
+    push_node_at(map->entry_ids, (NodeValue){.i_value = key}, insert_pos);
 
     map->used_buckets++;
     return;
@@ -234,7 +235,7 @@ void put(HashMap *map, int key, BucketValue value) {
     Bucket *new = malloc(sizeof(Bucket));
     *new = (Bucket){.key = key, .value = value, .next = NULL};
     curr->next = new;
-    push_node(map->entry_ids, key);
+    push_node(map->entry_ids, (NodeValue){.i_value = key});
     return;
   }
 }
@@ -269,7 +270,7 @@ void remove_value(HashMap *map, int key) {
   if (curr->next == NULL) {
     *curr = (Bucket){
         .key = NO_VALUE, .value = (BucketValue){.err = -1}, .next = NULL};
-    remove_node(map->entry_ids, key);
+    remove_node(map->entry_ids, (NodeValue){.i_value = key});
     map->used_buckets--;
     return;
   }
@@ -279,7 +280,7 @@ void remove_value(HashMap *map, int key) {
     Bucket *next = curr->next;
     *curr = *next;
     free(next);
-    remove_node(map->entry_ids, key);
+    remove_node(map->entry_ids, (NodeValue){.i_value = key});
     map->used_buckets--;
     return;
   }
@@ -298,7 +299,7 @@ void remove_value(HashMap *map, int key) {
   prev->next = curr->next;
   free(curr);
   map->used_buckets--;
-  remove_node(map->entry_ids, key);
+  remove_node(map->entry_ids, (NodeValue){.i_value = key});
 }
 
 void handle_sock_error(int err) {

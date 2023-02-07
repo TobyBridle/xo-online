@@ -52,8 +52,14 @@ typedef struct {
 #include <stdlib.h>
 #include <string.h>
 
+typedef union {
+  int i_value;
+  int err;
+  void *pointer;
+} NodeValue;
+
 struct node {
-  int data;
+  NodeValue data;
   struct node *next;
 };
 
@@ -63,11 +69,11 @@ typedef struct LINKEDLIST_T {
 } LinkedList;
 
 LinkedList *init_list();
-int push_node(LinkedList *list, int value);
-int push_node_at(LinkedList *list, int value, int index);
-int pop_node(LinkedList *list);
+int push_node(LinkedList *list, NodeValue value);
+int push_node_at(LinkedList *list, NodeValue value, int index);
+NodeValue pop_node(LinkedList *list);
 struct node *peek_node(LinkedList *list);
-int remove_node(LinkedList *list, int predicate);
+int remove_node(LinkedList *list, NodeValue predicate);
 void free_list(LinkedList *list);
 
 /*
@@ -82,9 +88,9 @@ typedef struct {
           // already defined
 
 stck_t *init_stack(int max_size);
-int push(stck_t *stack, int data);
-int pop(stck_t *stack);
-int peek(stck_t *stack);
+int push(stck_t *stack, NodeValue data);
+NodeValue pop(stck_t *stack);
+NodeValue peek(stck_t *stack);
 void free_stack(stck_t *stack);
 
 /*

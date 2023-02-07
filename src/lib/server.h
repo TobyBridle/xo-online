@@ -25,10 +25,19 @@ const int MAX_CLIENTS = 1000;
 enum SERVER_STATE { ACCEPTING, NOT_ACCEPTING };
 
 typedef struct {
+  /* uint8_t game_id; */
+  client_t *players[2];
+  client_t *spectators;
+  u_short playerTurn; // Either 0 or 1
+  BOOL isFull;
+} game_t;
+
+typedef struct {
   int socket;
   short port;
   HashMap clients;
   enum SERVER_STATE state;
+  LinkedList games;
 } server_t;
 
 /* ------------------------------------------------------------------------ */

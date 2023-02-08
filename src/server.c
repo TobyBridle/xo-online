@@ -210,7 +210,7 @@ void server_serve(server_t *server) {
       // Check if the client has disconnected
       int recv_status = recv(client->socket, peek_buf, 1, MSG_PEEK);
       if (recv_status > 0) {
-        recv(client->socket, buf, 1024, 0); // Accept the whole buffer
+        smart_recv(client->socket, buf, 1024); // Accept the whole buffer
 
         // If the client does not have a name, we can assume that the buffer
         // contains their name.
@@ -221,10 +221,11 @@ void server_serve(server_t *server) {
 
           if (trimmed_length == name_length ||
               name_length > MAX_CLIENT_NAME_LENGTH) {
-            send(client->socket, rejected_name_s_string, 1024, 0);
+            smart_send(client->socket, rejected_name_s_string,
+                       strlen(rejected_name_s_string) + 1);
           } else {
             client->client_name = name;
-            send(client->socket, accepted_name_s_string, 1024, 0);
+            smart_send(client->socket, accepted_name_s_string, 7);
             printf("Say hello to %s!\n", client->client_name);
             client->screen_state = HOME_PAGE;
           }
@@ -246,7 +247,7 @@ void server_serve(server_t *server) {
                     game->players[0]->client_name, game->isFull ? 2 : 1);
             serialized = serialize_string(formatted);
 
-            send(client->socket, serialized, 1024, 0);
+            smart_send(client->socket, serialized, strlen(serialized) + 1);
             free(serialized);
             free(formatted);
             formatted_length = 0;
@@ -299,11 +300,13 @@ void server_serve(server_t *server) {
         int length = snprintf(NULL, 0, "%d", client.client_id) + 1;
         char *client_id = calloc(length, sizeof(char));
         sprintf(client_id, "%d", client.client_id);
-        send(client.socket, client_id, 1024, 0);
+        smart_send(client.socket, client_id, length);
         free(client_id);
 
-        send(client.socket, clear_screen.s_string, 1024, 0);
-        send(client.socket, main_menu.s_string, 1024, 0);
+        smart_send(client.socket, clear_screen.s_string,
+                   strlen(clear_screen.s_string) + 1);
+        smart_send(client.socket, main_menu.s_string,
+                   strlen(main_menu.s_string) + 1);
       } else if (fds[0].revents & POLLERR) {
         printf("\x1b[31;1mError occurred\x1b[0m\n");
       }

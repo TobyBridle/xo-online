@@ -684,6 +684,24 @@ BOOL is_valid_input_key(char c) {
   return TRUE;
 }
 
+int smart_send(int socket, const void *data, int data_length) {
+  int len = data_length;
+  int ret = send(socket, &len, sizeof(len), 0);
+  if (ret < 0)
+    return ret;
+  return send(socket, data, len, 0);
+}
+
+int smart_recv(int socket, void *buffer, int buffer_size) {
+  int len;
+  int ret = recv(socket, &len, sizeof(len), 0);
+  if (ret < 0)
+    return ret;
+  if (len > buffer_size)
+    return -1;
+  return recv(socket, buffer, len, 0);
+}
+
 void *__malloc(size_t size, const char *file, int line) {
   printf("Attempting to allocate memory!\n");
   void *ptr = malloc(size);

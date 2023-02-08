@@ -43,7 +43,7 @@ int main() {
           break;
         }
 
-        recv(client->socket, buffer, 1024, 0);
+        smart_recv(client->socket, buffer, 1024);
         if (client_id == -1) {
           // We have received the client ID
           // We need to use strtol to convert the string to an integer
@@ -103,13 +103,14 @@ int main() {
         if (trimmed_amount < client_name_length) {
           requires_username = FALSE;
           char *encoded_username = serialize_string(client->client_name);
-          while (send(fds[0].fd, encoded_username, 1024, 0) < 1)
+          while (smart_send(fds[0].fd, encoded_username,
+                            strlen(encoded_username) + 1) < 1)
             ;
           free(encoded_username);
 
           // NOTE: We need to wait for a heads-up from the server that we were
           // successful.
-          recv(fds[0].fd, buffer, 1024, 0);
+          smart_recv(fds[0].fd, buffer, 1024);
           if (deserialize_int(buffer) == 1) {
             printf("\033[%d;0H", 6); // Move to the line above the input dialog
             printf("\033[s");
@@ -147,7 +148,7 @@ int main() {
       case '1':
         if (client->screen_state == HOME_PAGE) { // View the existing games
           serialized = serialize_int(1);
-          send(fds[0].fd, serialized, 1024, 0);
+          smart_send(fds[0].fd, serialized, 7);
           free(serialized);
           // TODO: TRANSITION TO VIEWING GAMES STATE
           // NOTE: WE COULD ADD SOME SORT OF RENDERING TEMPLATE??
@@ -156,7 +157,7 @@ int main() {
       case '2':
         if (client->screen_state == HOME_PAGE) { // Create a New Game
           serialized = serialize_int(2);
-          send(fds[0].fd, serialized, 1024, 0);
+          smart_send(fds[0].fd, serialized, 7);
           free(serialized);
         }
         break;

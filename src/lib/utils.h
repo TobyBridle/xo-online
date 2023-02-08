@@ -249,6 +249,8 @@ client_t *deserialize_client(char *buf);
 
 uint8_t trim_whitespace(char *str);
 BOOL is_valid_input_key(char c);
+int smart_send(int socket, const void *data, int data_length);
+int smart_recv(int socket, void *buffer, int buffer_size);
 
 void *__malloc(size_t size, const char *file, int line);
 #endif

@@ -282,15 +282,12 @@ void server_serve(server_t *server) {
             }
           }
 
-          smart_send(client->socket, clear_screen.s_string,
-                     strlen(clear_screen.s_string) + 1);
-          size_t header_length =
-              snprintf(NULL, 0, view_games.s_string, HEADER_VERB, game_count,
-                       HEADER_GAME) +
-              1;
+          smart_send(client->socket, clear_screen, strlen(clear_screen) + 1);
+          size_t header_length = snprintf(NULL, 0, view_games, HEADER_VERB,
+                                          game_count, HEADER_GAME) +
+                                 1;
           char *header = calloc(header_length, sizeof(char));
-          sprintf(header, view_games.s_string, HEADER_VERB, game_count,
-                  HEADER_GAME);
+          sprintf(header, view_games, HEADER_VERB, game_count, HEADER_GAME);
           smart_send(client->socket, header, header_length);
           free(header);
 
@@ -369,10 +366,8 @@ void server_serve(server_t *server) {
         smart_send(client.socket, client_id, length);
         free(client_id);
 
-        smart_send(client.socket, clear_screen.s_string,
-                   strlen(clear_screen.s_string) + 1);
-        smart_send(client.socket, main_menu.s_string,
-                   strlen(main_menu.s_string) + 1);
+        smart_send(client.socket, clear_screen, strlen(clear_screen) + 1);
+        smart_send(client.socket, main_menu, strlen(main_menu) + 1);
       } else if (fds[0].revents & POLLERR) {
         printf("\x1b[31;1mError occurred\x1b[0m\n");
       }

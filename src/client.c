@@ -170,8 +170,8 @@ int main() {
         if (client->screen_state == GAME_VIEW_PAGE) {
           smart_send(fds[0].fd, "b", 2);
           client->screen_state = HOME_PAGE;
-          print_buffer(clear_screen.s_string);
-          print_buffer(main_menu.s_string);
+          print_buffer(clear_screen);
+          print_buffer(main_menu);
           free(s.str.str);
         }
         break;

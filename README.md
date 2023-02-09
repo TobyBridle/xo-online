@@ -5,7 +5,7 @@
 ### Recommended Setup
 
 ```fish
-toby@desktop:~/xo-online$ mkdir bin && make tests/bin \
+toby@desktop:~/xo-online$ mkdir bin && mkdir tests/bin \
   && make
 ```
 
@@ -15,7 +15,7 @@ If you would like to create only the server & client, omitting
 the tests, simply only create a `bin` folder within the root of the project.
 
 ```fish
-toby@desktop:~/xo-online$ mkdir bin && make
+toby@desktop:~/xo-online$ mkdir bin && make server client
 ```
 
 ### Compiling Tests

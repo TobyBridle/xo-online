@@ -23,10 +23,10 @@ TestResult test_bool_serialize() {
 }
 
 TestResult test_string_serialize() {
-  char *serialized = serialize_string("Hello World");
-  char *deserialized = deserialize_string(serialized);
+  serialized_string serialized = serialize_string("Hello World");
+  char *deserialized = deserialize_string(serialized.str);
   EXPECT_EQ(strcmp(deserialized, "Hello World"), 0);
-  free(serialized);
+  free(serialized.str);
   free(deserialized);
   return SUCCESS;
 }

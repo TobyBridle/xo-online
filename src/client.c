@@ -104,11 +104,12 @@ int main() {
 
         if (trimmed_amount < client_name_length) {
           requires_username = FALSE;
-          char *encoded_username = serialize_string(client->client_name);
-          while (smart_send(fds[0].fd, encoded_username,
-                            strlen(encoded_username) + 1) < 1)
+          serialized_string encoded_username =
+              serialize_string(client->client_name);
+          while (smart_send(fds[0].fd, encoded_username.str,
+                            encoded_username.len + 1) < 1)
             ;
-          free(encoded_username);
+          free(encoded_username.str);
 
           // NOTE: We need to wait for a heads-up from the server that we were
           // successful.
@@ -152,6 +153,7 @@ int main() {
           serialized = serialize_int(1);
           smart_send(fds[0].fd, serialized, 7);
           free(serialized);
+          client->screen_state = GAME_VIEW_PAGE;
           // TODO: TRANSITION TO VIEWING GAMES STATE
           // NOTE: WE COULD ADD SOME SORT OF RENDERING TEMPLATE??
         }

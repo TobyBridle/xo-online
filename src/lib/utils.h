@@ -40,9 +40,13 @@ typedef struct {
     SETUP_PAGE, // This includes the initial connection page,
                 // and name entering
     HOME_PAGE,
+    GAME_VIEW_PAGE,
     IN_GAME_PAGE,
     SPECTATOR_PAGE,
   } screen_state;
+
+  void *game; // This will not be set at all by the client
+              // but will be used by the server.
 } client_t;
 #endif
 
@@ -233,9 +237,18 @@ void handle_sock_error(int err);
 
 // We have obtained `client_t client = { .name = "John", .id = 1 };`
 
+typedef struct {
+  char *str;
+  size_t len;
+} serialized_string;
+
+typedef union {
+  serialized_string str;
+} serialized;
+
 char *serialize_int(int i);
 char *serialize_bool(int b); // Where b = 0 or 1
-char *serialize_string(char *str);
+serialized_string serialize_string(char *str);
 char *serialize_client(client_t *client);
 char *serialize_error(int err); // We will use `serialize_int` to serialize the
                                 // error and then change the first byte to 0x05

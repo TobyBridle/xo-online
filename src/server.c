@@ -88,6 +88,7 @@ server_t *server_init(short port) {
          MAX_CLIENTS);
   HashMap clients = new_hashmap(MAX_CLIENTS);
   server->clients = clients;
+  server->games = *init_list();
 
   printf("\x1b[32;1mClient spaces created successfully\x1b[0m\n");
 
@@ -124,6 +125,7 @@ client_t server_accept(server_t *server) {
   client->addr = client_addr;
   client->client_name = NULL;
   client->player_type = SPECTATOR;
+  client->game = NULL;
   client->screen_state = SETUP_PAGE;
 
   // We need to get the next available ID
@@ -231,27 +233,43 @@ void server_serve(server_t *server) {
           }
         } else if (deserialize_int(buf) == 1 &&
                    client->screen_state == HOME_PAGE) {
-          struct node *ret = server->games.head;
+          struct node *head = server->games.head;
           game_t *game;
 
-          int formatted_length;
-          char *formatted;
-          char *serialized;
-          while (ret != NULL) {
-            game = ret->data.pointer;
+          int formatted_length = 0;
+          char *formatted = NULL;
+          serialized serialized;
+          while (head != NULL) {
+            game = head->data.pointer;
+            if (game == NULL) {
+              head = NULL;
+              break;
+            } else if (!game->validConnections) {
+              // We need to shutdown the game
+              remove_node(&server->games, (NodeValue){.pointer = game});
+              // TODO: BROADCAST TO ALL SPECTATORS AND THE OTHER PLAYER
+              // THAT THEY ARE NO LONGER IN THE GAME
+              break;
+            }
             formatted_length =
                 snprintf(NULL, 0, "%s's Game\t[%d/2]\n",
-                         game->players[0]->client_name, game->isFull ? 2 : 1);
+                         game->players[0].client_name, !game->isFull ? 2 : 1) +
+                1;
             formatted = calloc(formatted_length, sizeof(char));
             sprintf(formatted, "%s's Game\t[%d/2]\n",
-                    game->players[0]->client_name, game->isFull ? 2 : 1);
-            serialized = serialize_string(formatted);
+                    game->players[0].client_name, !game->isFull ? 2 : 1);
+            serialized.str = serialize_string(formatted);
 
-            smart_send(client->socket, serialized, strlen(serialized) + 1);
-            free(serialized);
+            smart_send(client->socket, serialized.str.str, serialized.str.len);
+            free(serialized.str.str);
             free(formatted);
             formatted_length = 0;
-            ret = ret->next;
+
+            if (head->next != NULL) {
+              head = head->next;
+            } else {
+              head = NULL;
+            }
           }
         } else if (deserialize_int(buf) == 2 &&
                    client->screen_state == HOME_PAGE) {
@@ -259,9 +277,14 @@ void server_serve(server_t *server) {
           if (client->screen_state == IN_GAME_PAGE)
             return;
           game_t *game = malloc(sizeof(game_t));
-          memset(game, 0, sizeof(game_t));
-          game->players[0] = client;
+
+          game->isFull = game->playerTurn = 0;
+          game->spectators = *init_list();
+          game->players[0] = *client;
+          game->validConnections = TRUE;
+
           push_node(&server->games, (NodeValue){.pointer = game});
+          client->game = game;
           client->screen_state = IN_GAME_PAGE;
         }
       } else if (recv_status == 0) {
@@ -274,7 +297,15 @@ void server_serve(server_t *server) {
         if (client->client_name != NULL)
           free(client->client_name);
         // Free the client
+        client->client_name = NULL;
+        client->client_id = 0;
+        if (client->game != NULL) {
+          // We need to shut down the game if they're playing in one
+          game_t *game = client->game;
+          game->validConnections = FALSE;
+        }
         free(client);
+        client = NULL;
         // Remove the client from the hashmap
         remove_value(&server->clients, client_id);
       }

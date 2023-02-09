@@ -483,7 +483,7 @@ char *serialize_bool(BOOL b) {
 
 BOOL deserialize_bool(char *buf) { return buf[2] == 0x01; }
 
-char *serialize_string(char *str) {
+serialized_string serialize_string(char *str) {
   // 0x03 0x02 0x00 0x00
   // ---- ---- ---- ----
   // 4 Bytes + NULL Terminator
@@ -494,17 +494,17 @@ char *serialize_string(char *str) {
 
   if (len > 255) {
     fprintf(stderr, "\x1b[31;1mString is too long to be serialized\x1b[0m\n");
-    return NULL;
+    return (serialized_string){NULL};
   } else if (len == 1) {
     fprintf(stderr, "\x1b[31;1mString is empty\x1b[0m\n");
-    return NULL;
+    return (serialized_string){NULL};
   }
 
   char *buf = calloc(len + 2, 1);
   buf[0] = 0x03;
   buf[1] = len;
   memcpy(buf + 2, str, len);
-  return buf;
+  return (serialized_string){.str = buf, .len = len};
 }
 
 char *deserialize_string(char *buf) {
@@ -566,7 +566,7 @@ char *serialize_client(client_t *client) {
   buf[1] = len;
 
   // Serializing fields
-  char *client_name = serialize_string(client->client_name);
+  serialized_string client_name = serialize_string(client->client_name);
   char *serialized_int;
 
   serialized_int = serialize_int(client->socket);
@@ -577,8 +577,8 @@ char *serialize_client(client_t *client) {
   memcpy(buf + 8, serialized_int, 6);
   free(serialized_int);
 
-  memcpy(buf + 14, client_name, strlen(client->client_name) + 2);
-  free(client_name);
+  memcpy(buf + 14, client_name.str, strlen(client->client_name) + 2);
+  free(client_name.str);
 
   // We need to serialize the struct sockaddr_in addr
   // Fields:

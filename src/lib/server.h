@@ -20,6 +20,10 @@
 #define TCP 0
 #define loop while (1)
 
+#define HEADER_VERB (game_count > 1 || game_count == 0 ? "are" : "is")
+
+#define HEADER_GAME (game_count > 1 || game_count == 0 ? "games" : "game")
+
 const int MAX_CLIENTS = 1000;
 
 enum SERVER_STATE { ACCEPTING, NOT_ACCEPTING };
@@ -38,7 +42,7 @@ typedef struct {
   short port;
   HashMap clients;
   enum SERVER_STATE state;
-  LinkedList games;
+  LinkedList *games;
 } server_t;
 
 /* ------------------------------------------------------------------------ */

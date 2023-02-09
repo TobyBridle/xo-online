@@ -88,7 +88,7 @@ server_t *server_init(short port) {
          MAX_CLIENTS);
   HashMap clients = new_hashmap(MAX_CLIENTS);
   server->clients = clients;
-  server->games = *init_list();
+  server->games = init_list();
 
   printf("\x1b[32;1mClient spaces created successfully\x1b[0m\n");
 
@@ -212,10 +212,12 @@ void server_serve(server_t *server) {
       // Check if the client has disconnected
       int recv_status = recv(client->socket, peek_buf, 1, MSG_PEEK);
       if (recv_status > 0) {
-        smart_recv(client->socket, buf, 1024); // Accept the whole buffer
+        int received =
+            smart_recv(client->socket, buf, 1024); // Accept the whole buffer
 
         // If the client does not have a name, we can assume that the buffer
         // contains their name.
+        deserialized d;
         if (client->client_name == NULL) {
           char *name = deserialize_string(buf);
           uint8_t name_length = strlen(name);
@@ -232,13 +234,21 @@ void server_serve(server_t *server) {
             client->screen_state = HOME_PAGE;
           }
         } else if (deserialize_int(buf) == 1 &&
-                   client->screen_state == HOME_PAGE) {
-          struct node *head = server->games.head;
+                   (client->screen_state == HOME_PAGE ||
+                    client->screen_state == GAME_VIEW_PAGE)) {
+          struct node *head = server->games->head;
           game_t *game;
 
           int formatted_length = 0;
           char *formatted = NULL;
           serialized serialized;
+
+          // NOTE: MUST IMPLEMENT SOME
+          // CHECK HERE TO SEE WHETHER ANOTHER RENDER IS NEEDED
+          // OR NOT.
+
+          unsigned long game_count = 0;
+          LinkedList *games_string = init_list();
           while (head != NULL) {
             game = head->data.pointer;
             if (game == NULL) {
@@ -246,22 +256,22 @@ void server_serve(server_t *server) {
               break;
             } else if (!game->validConnections) {
               // We need to shutdown the game
-              remove_node(&server->games, (NodeValue){.pointer = game});
+              remove_node(server->games, (NodeValue){.pointer = game});
               // TODO: BROADCAST TO ALL SPECTATORS AND THE OTHER PLAYER
               // THAT THEY ARE NO LONGER IN THE GAME
               break;
             }
             formatted_length =
                 snprintf(NULL, 0, "%s's Game\t[%d/2]\n",
-                         game->players[0].client_name, !game->isFull ? 2 : 1) +
+                         game->players[0].client_name, game->isFull ? 2 : 1) +
                 1;
             formatted = calloc(formatted_length, sizeof(char));
             sprintf(formatted, "%s's Game\t[%d/2]\n",
-                    game->players[0].client_name, !game->isFull ? 2 : 1);
+                    game->players[0].client_name, game->isFull ? 2 : 1);
             serialized.str = serialize_string(formatted);
 
-            smart_send(client->socket, serialized.str.str, serialized.str.len);
-            free(serialized.str.str);
+            push_node(games_string, (NodeValue){.pointer = &serialized.str});
+            game_count++;
             free(formatted);
             formatted_length = 0;
 
@@ -271,6 +281,29 @@ void server_serve(server_t *server) {
               head = NULL;
             }
           }
+
+          smart_send(client->socket, clear_screen.s_string,
+                     strlen(clear_screen.s_string) + 1);
+          size_t header_length =
+              snprintf(NULL, 0, view_games.s_string, HEADER_VERB, game_count,
+                       HEADER_GAME) +
+              1;
+          char *header = calloc(header_length, sizeof(char));
+          sprintf(header, view_games.s_string, HEADER_VERB, game_count,
+                  HEADER_GAME);
+          smart_send(client->socket, header, header_length);
+          free(header);
+
+          NodeValue val;
+          while ((val = pop_node(games_string)).err != -1) {
+            serialized_string *str = val.pointer;
+            smart_send(client->socket, str->str, str->len);
+            free(str->str);
+          }
+          free_list(games_string);
+        } else if (!strcmp(buf, "b") &&
+                   client->screen_state == GAME_VIEW_PAGE) {
+          client->screen_state = HOME_PAGE;
         } else if (deserialize_int(buf) == 2 &&
                    client->screen_state == HOME_PAGE) {
           // Create New Game
@@ -283,10 +316,12 @@ void server_serve(server_t *server) {
           game->players[0] = *client;
           game->validConnections = TRUE;
 
-          push_node(&server->games, (NodeValue){.pointer = game});
+          push_node(server->games, (NodeValue){.pointer = game});
           client->game = game;
           client->screen_state = IN_GAME_PAGE;
         }
+        if (received > 0)
+          bzero(buf, received);
       } else if (recv_status == 0) {
         // The client has disconnected
         printf("\x1b[31;1mClient %d (%s) has disconnected\x1b[0m\n", client_id,
@@ -368,6 +403,8 @@ int server_unbind(server_t *server) {
   }
 
   free_hashmap(&server->clients);
+  if (server->games != NULL)
+    free_list(server->games);
   free(server);
 
   printf("\x1b[33;1mAttempting to kill server instance now\x1b[0;0m\n");

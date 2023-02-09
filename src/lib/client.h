@@ -1,5 +1,6 @@
 #ifndef NOUGHTS_CROSSES_CLIENT_H
 #define NOUGHTS_CROSSES_CLIENT_H
+#include "resources.h"
 #include "utils.h"
 #include <netinet/in.h>
 #include <poll.h>
@@ -32,6 +33,10 @@ const uint8_t MAX_CLIENT_NAME_LENGTH = 24;
 
 #ifndef CTRL_C_KEY
 #define CTRL_C_KEY 3
+#endif
+
+#ifndef ESC_KEY
+#define ESC_KEY 27
 #endif
 
 static struct termios restore;

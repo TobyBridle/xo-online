@@ -244,6 +244,7 @@ typedef struct {
 
 typedef union {
   serialized_string str;
+  char *val;
 } serialized;
 
 char *serialize_int(int i);
@@ -253,6 +254,12 @@ char *serialize_client(client_t *client);
 char *serialize_error(int err); // We will use `serialize_int` to serialize the
                                 // error and then change the first byte to 0x05
 char *serialize_enum(int e);
+
+typedef union {
+  char *string;
+  int i;
+  client_t client;
+} deserialized;
 
 int deserialize_int(char *buf);
 BOOL deserialize_bool(char *buf);

@@ -20,6 +20,7 @@ int main() {
   enable_raw_term();
 
   char c;
+  int ignore_n_chars = 0;
 
   while (client->socket == fds[0].fd) {
     // Check if we have a connection
@@ -57,7 +58,8 @@ int main() {
         }
         print_buffer(buffer);
         // Prevent previous long messages leaking into new short messages
-        bzero(buffer, received);
+        if (received > 0)
+          bzero(buffer, received);
       } else if (fds[0].revents & POLL_ERR) {
         printf("\x1b[31;1mError occurred\x1b[0m\r\n");
       }
@@ -141,28 +143,51 @@ int main() {
       fflush(stdout);
 
     } else if (input_status > 0) {
-      char *serialized;
+      if (ignore_n_chars > 0) {
+        ignore_n_chars--;
+        continue;
+      }
+      serialized s;
       switch (c) {
+      case ESC_KEY:
+        ignore_n_chars = 2;
+        break;
       case QUIT_KEY:
       case CTRL_C_KEY:
         fds[0].fd = -1; // NOTE: This will prevent polls from occuring and
                         // will break our loop
         break;
+      case 'r':
+      case 'R':
+        if (client->screen_state == GAME_VIEW_PAGE) {
+          s.val = serialize_int(1);
+          smart_send(fds[0].fd, s.val, 7);
+          free(s.val);
+        }
+        break;
+      case 'b':
+      case 'B':
+        if (client->screen_state == GAME_VIEW_PAGE) {
+          smart_send(fds[0].fd, "b", 2);
+          client->screen_state = HOME_PAGE;
+          print_buffer(clear_screen.s_string);
+          print_buffer(main_menu.s_string);
+          free(s.str.str);
+        }
+        break;
       case '1':
         if (client->screen_state == HOME_PAGE) { // View the existing games
-          serialized = serialize_int(1);
-          smart_send(fds[0].fd, serialized, 7);
-          free(serialized);
+          s.val = serialize_int(1);
+          smart_send(fds[0].fd, s.val, 7);
+          free(s.val);
           client->screen_state = GAME_VIEW_PAGE;
-          // TODO: TRANSITION TO VIEWING GAMES STATE
-          // NOTE: WE COULD ADD SOME SORT OF RENDERING TEMPLATE??
         }
         break;
       case '2':
         if (client->screen_state == HOME_PAGE) { // Create a New Game
-          serialized = serialize_int(2);
-          smart_send(fds[0].fd, serialized, 7);
-          free(serialized);
+          s.val = serialize_int(2);
+          smart_send(fds[0].fd, s.val, 7);
+          free(s.val);
         }
         break;
       case '3':
@@ -270,9 +295,11 @@ void client_disconnect(client_t *client) {
 }
 
 void print_buffer(char *buf) {
-  char *token = strtok(buf, "\n");
+  char *dup = strdup(buf);
+  char *token = strtok(dup, "\n");
   while (token != NULL) {
     printf("%s\r\n", token);
     token = strtok(NULL, "\n");
   }
+  free(dup);
 }

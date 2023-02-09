@@ -43,7 +43,7 @@ int main() {
           break;
         }
 
-        smart_recv(client->socket, buffer, 1024);
+        int received = smart_recv(client->socket, buffer, 1024);
         if (client_id == -1) {
           // We have received the client ID
           // We need to use strtol to convert the string to an integer
@@ -56,6 +56,8 @@ int main() {
           requires_username = TRUE;
         }
         print_buffer(buffer);
+        // Prevent previous long messages leaking into new short messages
+        bzero(buffer, received);
       } else if (fds[0].revents & POLL_ERR) {
         printf("\x1b[31;1mError occurred\x1b[0m\r\n");
       }

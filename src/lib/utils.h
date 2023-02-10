@@ -20,6 +20,10 @@
   ((val) < (min) ? (min) : ((val) > (max) ? (max) : (val)))
 #endif
 
+#ifndef NEXT_ITER
+#define NEXT_ITER(head) head = head->next != NULL ? head->next : NULL;
+#endif
+
 #include <ctype.h>
 #include <netinet/in.h>
 typedef struct {

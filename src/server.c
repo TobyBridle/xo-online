@@ -262,11 +262,7 @@ void server_serve(server_t *server) {
               break;
             }
             if (game->isFull) {
-              if (head->next != NULL) {
-                head = head->next;
-              } else {
-                head = NULL;
-              }
+              NEXT_ITER(head);
               continue;
             }
             formatted_length =
@@ -283,11 +279,7 @@ void server_serve(server_t *server) {
             free(formatted);
             formatted_length = 0;
 
-            if (head->next != NULL) {
-              head = head->next;
-            } else {
-              head = NULL;
-            }
+            NEXT_ITER(head);
           }
 
           smart_send(client->socket, clear_screen, strlen(clear_screen) + 1);

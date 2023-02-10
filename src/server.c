@@ -261,6 +261,14 @@ void server_serve(server_t *server) {
               // THAT THEY ARE NO LONGER IN THE GAME
               break;
             }
+            if (game->isFull) {
+              if (head->next != NULL) {
+                head = head->next;
+              } else {
+                head = NULL;
+              }
+              continue;
+            }
             formatted_length =
                 snprintf(NULL, 0, "%s's Game\t[%d/2]\n",
                          game->players[0].client_name, game->isFull ? 2 : 1) +
@@ -309,7 +317,7 @@ void server_serve(server_t *server) {
           game_t *game = malloc(sizeof(game_t));
 
           game->isFull = game->playerTurn = 0;
-          game->spectators = *init_list();
+          /* game->spectators = *init_list(); */
           game->players[0] = *client;
           game->validConnections = TRUE;
 

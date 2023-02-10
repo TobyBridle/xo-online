@@ -42,7 +42,7 @@ typedef struct {
     HOME_PAGE,
     GAME_VIEW_PAGE,
     IN_GAME_PAGE,
-    SPECTATOR_PAGE,
+    /* SPECTATOR_PAGE, */
   } screen_state;
 
   void *game; // This will not be set at all by the client

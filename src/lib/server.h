@@ -31,7 +31,7 @@ enum SERVER_STATE { ACCEPTING, NOT_ACCEPTING };
 typedef struct {
   /* uint8_t game_id; */
   client_t players[2];
-  LinkedList spectators;
+  /* LinkedList spectators; */
   u_short playerTurn; // Either 0 or 1
   BOOL validConnections;
   BOOL isFull;

@@ -163,6 +163,7 @@ int main() {
           s.val = serialize_int(1);
           smart_send(fds[0].fd, s.val, 7);
           free(s.val);
+          s.val = NULL;
         }
         break;
       case 'b':
@@ -173,6 +174,7 @@ int main() {
           print_buffer(clear_screen);
           print_buffer(main_menu);
           free(s.str.str);
+          s.str.str = NULL;
         }
         break;
       case '1':
@@ -180,6 +182,7 @@ int main() {
           s.val = serialize_int(1);
           smart_send(fds[0].fd, s.val, 7);
           free(s.val);
+          s.val = NULL;
           client->screen_state = GAME_VIEW_PAGE;
         }
         break;
@@ -188,6 +191,7 @@ int main() {
           s.val = serialize_int(2);
           smart_send(fds[0].fd, s.val, 7);
           free(s.val);
+          s.val = NULL;
         }
         break;
       case '3':

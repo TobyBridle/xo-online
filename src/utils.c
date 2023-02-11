@@ -509,6 +509,8 @@ serialized_string serialize_string(char *str) {
 
 char *deserialize_string(char *buf) {
 
+  if (buf == NULL)
+    return NULL;
   if (buf[0] != 0x03) {
     fprintf(stderr, "\x1b[31;1mInvalid string\x1b[0m\n");
     return NULL;

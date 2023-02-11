@@ -239,6 +239,7 @@ void disable_raw_term() {
 
 client_t *client_init() {
   client_t *client = (client_t *)malloc(sizeof(client_t));
+  memset(client, 0, sizeof(client_t));
   int socket_fd = socket(AF_INET, SOCK_STREAM, TCP);
   if (socket_fd == -1) {
     handle_sock_error(errno);

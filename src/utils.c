@@ -702,6 +702,18 @@ int smart_recv(int socket, void *buffer, int buffer_size) {
   return recv(socket, buffer, len, 0);
 }
 
+unsigned int hash_string(char *buf, unsigned int mod) {
+  if (buf == NULL)
+    return 0;
+  unsigned int hash = 0;
+  unsigned int len = strlen(buf);
+  for (int i = 0; i < len; i++) {
+    hash = (hash * 31 + buf[i]) % mod;
+  }
+
+  return hash;
+}
+
 void *__malloc(size_t size, const char *file, int line) {
   printf("Attempting to allocate memory!\n");
   void *ptr = malloc(size);

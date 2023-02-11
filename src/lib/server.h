@@ -43,6 +43,7 @@ typedef struct {
   HashMap clients;
   enum SERVER_STATE state;
   LinkedList *games;
+  unsigned long current_game_hash;
 } server_t;
 
 /* ------------------------------------------------------------------------ */
@@ -92,4 +93,5 @@ int server_unbind(server_t *server);
  * @param subprocess
  */
 /* void handle_commands(server_t *server, pid_t subprocess); */
+unsigned long hash_games_list(LinkedList *games);
 #endif

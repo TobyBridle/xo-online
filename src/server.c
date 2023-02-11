@@ -126,6 +126,7 @@ client_t server_accept(server_t *server) {
   client->client_name = NULL;
   client->player_type = SPECTATOR;
   client->game = NULL;
+  client->last_sent_game_hash = 0;
   client->screen_state = SETUP_PAGE;
 
   // We need to get the next available ID
@@ -236,6 +237,14 @@ void server_serve(server_t *server) {
         } else if (deserialize_int(buf) == 1 &&
                    (client->screen_state == HOME_PAGE ||
                     client->screen_state == GAME_VIEW_PAGE)) {
+
+          if (client->last_sent_game_hash !=
+                  0 && // If it is not 0, the user has already had it rendered
+                       // at some point
+              client->last_sent_game_hash == server->current_game_hash) {
+            continue;
+          }
+
           struct node *head = server->games->head;
           game_t *game;
 
@@ -243,22 +252,17 @@ void server_serve(server_t *server) {
           char *formatted = NULL;
           serialized serialized;
 
-          // NOTE: MUST IMPLEMENT SOME
-          // CHECK HERE TO SEE WHETHER ANOTHER RENDER IS NEEDED
-          // OR NOT.
-
           unsigned long game_count = 0;
           LinkedList *games_string = init_list();
           while (head != NULL) {
             game = head->data.pointer;
             if (game == NULL) {
-              head = NULL;
-              break;
+              NEXT_ITER(head);
+              continue;
             } else if (!game->validConnections) {
               // We need to shutdown the game
               remove_node(server->games, (NodeValue){.pointer = game});
-              // TODO: BROADCAST TO ALL SPECTATORS AND THE OTHER PLAYER
-              // THAT THEY ARE NO LONGER IN THE GAME
+              server->current_game_hash = hash_games_list(server->games);
               break;
             }
             if (game->isFull) {
@@ -298,9 +302,11 @@ void server_serve(server_t *server) {
             free(str->str);
           }
           free_list(games_string);
+          client->last_sent_game_hash = server->current_game_hash;
         } else if (!strcmp(buf, "b") &&
                    client->screen_state == GAME_VIEW_PAGE) {
           client->screen_state = HOME_PAGE;
+          client->last_sent_game_hash = 0;
         } else if (deserialize_int(buf) == 2 &&
                    client->screen_state == HOME_PAGE) {
           // Create New Game
@@ -314,6 +320,7 @@ void server_serve(server_t *server) {
           game->validConnections = TRUE;
 
           push_node(server->games, (NodeValue){.pointer = game});
+          server->current_game_hash = hash_games_list(server->games);
           client->game = game;
           client->screen_state = IN_GAME_PAGE;
         }
@@ -335,6 +342,8 @@ void server_serve(server_t *server) {
           // We need to shut down the game if they're playing in one
           game_t *game = client->game;
           game->validConnections = FALSE;
+          server->current_game_hash =
+              1; // Reset the hash to force a rehash of the games
         }
         free(client);
         client = NULL;
@@ -404,4 +413,20 @@ int server_unbind(server_t *server) {
 
   printf("\x1b[33;1mAttempting to kill server instance now\x1b[0;0m\n");
   exit(0);
+}
+
+unsigned long hash_games_list(LinkedList *games) {
+  unsigned long hash = 0;
+  unsigned int index = 0;
+
+  struct node *curr = games->head;
+  game_t *game;
+  while (curr != NULL) {
+    game = curr->data.pointer;
+    hash = (hash * 31) + index * hash_string(game->players[0].client_name, 67);
+    hash += game->isFull ? index : 0;
+    index++;
+    NEXT_ITER(curr);
+  }
+  return hash + 17; // Just to ensure that it is never 0
 }

@@ -51,6 +51,7 @@ typedef struct {
 
   void *game; // This will not be set at all by the client
               // but will be used by the server.
+  unsigned long last_sent_game_hash;
 } client_t;
 #endif
 
@@ -275,6 +276,8 @@ uint8_t trim_whitespace(char *str);
 BOOL is_valid_input_key(char c);
 int smart_send(int socket, const void *data, int data_length);
 int smart_recv(int socket, void *buffer, int buffer_size);
+
+unsigned int hash_string(char *buf, unsigned int mod);
 
 void *__malloc(size_t size, const char *file, int line);
 #endif

@@ -250,20 +250,27 @@ void server_serve(server_t *server) {
 
           int formatted_length = 0;
           char *formatted = NULL;
-          serialized serialized;
 
           unsigned long game_count = 0;
           LinkedList *games_string = init_list();
           while (head != NULL) {
+            serialized *s = malloc(sizeof(serialized));
+
             game = head->data.pointer;
             if (game == NULL) {
               NEXT_ITER(head);
               continue;
             } else if (!game->validConnections) {
               // We need to shutdown the game
+
+              // We need to keep track of the next one
+              // as the current will be freed and unavailable to read from.
+              struct node *next_head = head->next;
               remove_node(server->games, (NodeValue){.pointer = game});
               server->current_game_hash = hash_games_list(server->games);
-              break;
+
+              head = next_head;
+              continue;
             }
             if (game->isFull) {
               NEXT_ITER(head);
@@ -276,9 +283,9 @@ void server_serve(server_t *server) {
             formatted = calloc(formatted_length, sizeof(char));
             sprintf(formatted, "%s's Game\t[%d/2]\n",
                     game->players[0].client_name, game->isFull ? 2 : 1);
-            serialized.str = serialize_string(formatted);
+            s->str = serialize_string(formatted);
 
-            push_node(games_string, (NodeValue){.pointer = &serialized.str});
+            push_node(games_string, (NodeValue){.pointer = &s->str});
             game_count++;
             free(formatted);
             formatted_length = 0;
@@ -300,6 +307,7 @@ void server_serve(server_t *server) {
             serialized_string *str = val.pointer;
             smart_send(client->socket, str->str, str->len);
             free(str->str);
+            free(str);
           }
           free_list(games_string);
           client->last_sent_game_hash = server->current_game_hash;

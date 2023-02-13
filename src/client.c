@@ -192,6 +192,8 @@ int main() {
           smart_send(fds[0].fd, s.val, 7);
           free(s.val);
           s.val = NULL;
+          print_buffer(clear_screen);
+          print_buffer(waiting_room);
         }
         break;
       case '3':

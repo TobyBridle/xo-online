@@ -94,4 +94,5 @@ int server_unbind(server_t *server);
  */
 /* void handle_commands(server_t *server, pid_t subprocess); */
 unsigned long hash_games_list(LinkedList *games);
+int render_games_page(server_t *server, client_t *client);
 #endif

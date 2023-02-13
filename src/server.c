@@ -443,3 +443,83 @@ unsigned long hash_games_list(LinkedList *games) {
   }
   return hash + 17; // Just to ensure that it is never 0
 }
+
+int render_games_page(server_t *server, client_t *client) {
+
+  if (client->last_sent_game_hash !=
+          0 && // If it is not 0, the user has already had it rendered
+               // at some point
+      client->last_sent_game_hash == server->current_game_hash) {
+    return -3;
+  }
+
+  struct node *head = server->games->head;
+  game_t *game;
+
+  int formatted_length = 0;
+  char *formatted = NULL;
+
+  unsigned long game_count = 0;
+  LinkedList *games_string = init_list();
+  while (head != NULL) {
+    serialized *s = malloc(sizeof(serialized));
+
+    game = head->data.pointer;
+    if (game == NULL) {
+      NEXT_ITER(head);
+      continue;
+    } else if (!game->validConnections) {
+      // We need to shutdown the game
+
+      // We need to keep track of the next one
+      // as the current will be freed and unavailable to read from.
+      struct node *next_head = head->next;
+      remove_node(server->games, (NodeValue){.pointer = game});
+      server->current_game_hash = hash_games_list(server->games);
+      free(game);
+      game = NULL;
+
+      head = next_head;
+      continue;
+    }
+    if (game->isFull) {
+      NEXT_ITER(head);
+      continue;
+    }
+    formatted_length =
+        snprintf(NULL, 0, game_info_template, game->players[0]->client_name,
+                 game->isFull ? 2 : 1) +
+        1;
+    formatted = calloc(formatted_length, sizeof(char));
+    sprintf(formatted, game_info_template, game->players[0]->client_name,
+            game->isFull ? 2 : 1);
+    s->str = serialize_string(formatted);
+
+    push_node(games_string, (NodeValue){.pointer = &s->str});
+    game_count++;
+    free(formatted);
+    formatted_length = 0;
+
+    NEXT_ITER(head);
+  }
+
+  smart_send(client->socket, clear_screen, strlen(clear_screen) + 1);
+  size_t header_length =
+      snprintf(NULL, 0, view_games, HEADER_VERB, game_count, HEADER_GAME) + 1;
+  char *header = calloc(header_length, sizeof(char));
+  sprintf(header, view_games, HEADER_VERB, game_count, HEADER_GAME);
+  smart_send(client->socket, header, header_length);
+  free(header);
+
+  NodeValue val;
+  while ((val = pop_node(games_string)).err != -1) {
+    serialized_string *str = val.pointer;
+    smart_send(client->socket, str->str, str->len);
+    free(str->str);
+    free(str);
+  }
+  free_list(games_string);
+  client->last_sent_game_hash = server->current_game_hash;
+
+  return 0;
+}

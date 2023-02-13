@@ -265,11 +265,7 @@ void server_serve(server_t *server) {
 
               // We need to keep track of the next one
               // as the current will be freed and unavailable to read from.
-              struct node *next_head = head->next;
-              remove_node(server->games, (NodeValue){.pointer = game});
-              server->current_game_hash = hash_games_list(server->games);
-
-              head = next_head;
+              NEXT_ITER(head);
               continue;
             }
             if (game->isFull) {
@@ -278,11 +274,11 @@ void server_serve(server_t *server) {
             }
             formatted_length =
                 snprintf(NULL, 0, "%s's Game\t[%d/2]\n",
-                         game->players[0].client_name, game->isFull ? 2 : 1) +
+                         game->players[0]->client_name, game->isFull ? 2 : 1) +
                 1;
             formatted = calloc(formatted_length, sizeof(char));
             sprintf(formatted, "%s's Game\t[%d/2]\n",
-                    game->players[0].client_name, game->isFull ? 2 : 1);
+                    game->players[0]->client_name, game->isFull ? 2 : 1);
             s->str = serialize_string(formatted);
 
             push_node(games_string, (NodeValue){.pointer = &s->str});
@@ -324,7 +320,7 @@ void server_serve(server_t *server) {
 
           game->isFull = game->playerTurn = 0;
           /* game->spectators = *init_list(); */
-          game->players[0] = *client;
+          game->players[0] = client;
           game->validConnections = TRUE;
 
           push_node(server->games, (NodeValue){.pointer = game});
@@ -339,6 +335,8 @@ void server_serve(server_t *server) {
         printf("\x1b[31;1mClient %d (%s) has disconnected\x1b[0m\n", client_id,
                client->client_name);
         // Close the socket
+        while (recv(client->socket, NULL, 1024, 0) > 0)
+          ;
         close(client->socket);
 
         if (client->client_name != NULL)
@@ -350,8 +348,13 @@ void server_serve(server_t *server) {
           // We need to shut down the game if they're playing in one
           game_t *game = client->game;
           game->validConnections = FALSE;
+          struct node *next_head = head->next;
+          remove_node(server->games, (NodeValue){.pointer = game});
+
           server->current_game_hash =
               1; // Reset the hash to force a rehash of the games
+          free(client->game);
+          client->game = NULL;
         }
         free(client);
         client = NULL;
@@ -408,6 +411,8 @@ int server_unbind(server_t *server) {
   // being that we get the client from the map and then close it.
   while ((entry_id = pop_node(server->clients.entry_ids)).err != -1) {
     client = get(server->clients, entry_id.i_value).client;
+    while (recv(client->socket, NULL, 1024, 0) > 0)
+      ;
     close(client->socket);
     printf("\x1b[32;1mClosed connection from Client %d\x1b[0;0m\n",
            client->client_id);
@@ -431,7 +436,7 @@ unsigned long hash_games_list(LinkedList *games) {
   game_t *game;
   while (curr != NULL) {
     game = curr->data.pointer;
-    hash = (hash * 31) + index * hash_string(game->players[0].client_name, 67);
+    hash = (hash * 31) + index * hash_string(game->players[0]->client_name, 67);
     hash += game->isFull ? index : 0;
     index++;
     NEXT_ITER(curr);

@@ -318,7 +318,14 @@ void server_serve(server_t *server) {
         } else if (!strcmp(buf, serialize_string(" ").str)) {
           printf("Client wants to join a game\n");
           // Dequeue Game (FIFO)
-          game_t *game = server->games->head->data.pointer;
+          NodeValue node = pop_node(server->games);
+          //  There are no games.
+          if (node.err == -1) {
+            continue;
+          }
+
+          game_t *game = node.pointer;
+
           game->isFull = TRUE;
           game->players[1] = client;
 

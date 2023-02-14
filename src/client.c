@@ -203,12 +203,13 @@ int main() {
           // If we have not refreshed, the server will send us back a response
           // with the updated games list.
           int received = smart_recv(fds[0].fd, buffer, 1024);
-          s.str.str = deserialize_string(buffer);
-          if (!strcmp(s.str.str, "joined")) {
-            client->screen_state = IN_GAME_PAGE;
-          }
-          if (received > 0)
+          if (received > 0) {
+            s.str.str = deserialize_string(buffer);
+            if (!strcmp(s.str.str, "joined")) {
+              client->screen_state = IN_GAME_PAGE;
+            }
             free(s.str.str);
+          }
         }
         break;
       case '1':

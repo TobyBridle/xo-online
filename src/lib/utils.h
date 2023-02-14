@@ -82,7 +82,7 @@ int push_node(LinkedList *list, NodeValue value);
 int push_node_at(LinkedList *list, NodeValue value, int index);
 NodeValue pop_node(LinkedList *list);
 struct node *peek_node(LinkedList *list);
-int remove_node(LinkedList *list, NodeValue predicate);
+NodeValue remove_node(LinkedList *list, NodeValue predicate);
 void free_list(LinkedList *list);
 
 /*

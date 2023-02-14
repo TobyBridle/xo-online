@@ -91,12 +91,13 @@ struct node *peek_node(LinkedList *list) {
   return list->head;
 }
 
-int remove_node(LinkedList *list, NodeValue predicate) {
+NodeValue remove_node(LinkedList *list, NodeValue predicate) {
   if (list->head == NULL) {
-    return -1;
+    return (NodeValue){.err = -1};
   }
   struct node *head = list->head;
   struct node *prev = NULL;
+  NodeValue ret;
   while (head != NULL) {
     if (head->data.pointer == predicate.pointer ||
         head->data.i_value == predicate.i_value) {
@@ -110,14 +111,15 @@ int remove_node(LinkedList *list, NodeValue predicate) {
       if (head == list->tail) {
         list->tail = prev;
       }
+      ret = head->data;
       free(head);
       head = NULL;
-      return 0;
+      return ret;
     }
     prev = head;
     head = head->next;
   }
-  return -1;
+  return (NodeValue){.err = -1};
 }
 
 void free_list(LinkedList *list) {

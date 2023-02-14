@@ -77,6 +77,8 @@ void server_serve(server_t *server);
 // Helpers used by the server_serve function
 client_t server_accept(server_t *server);
 int server_handle(server_t *server, client_t *client, char *message);
+void smart_broadcast(client_t **clients, size_t amount, char *message,
+                     size_t len);
 
 /**
  * @brief Free any memory allocated and close the socket(s).

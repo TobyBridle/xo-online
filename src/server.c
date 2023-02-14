@@ -13,6 +13,8 @@ void server_sigint(int sig) {
 }
 
 char *accepted_name_s_string, *rejected_name_s_string;
+serialized_string accepted_player_s_string;
+char *game_destroy_s_string;
 
 /* pthread_t server_thread; */
 /* pthread_t game_handling_thread; */
@@ -21,6 +23,8 @@ int main() {
 
   accepted_name_s_string = serialize_int(1);
   rejected_name_s_string = serialize_int(-1);
+  game_destroy_s_string = rejected_name_s_string;
+  accepted_player_s_string = serialize_string("joined");
 
   // Initialize the server
   server_t *server = server_init(PORT);
@@ -311,6 +315,19 @@ void server_serve(server_t *server) {
                    client->screen_state == GAME_VIEW_PAGE) {
           client->screen_state = HOME_PAGE;
           client->last_sent_game_hash = 0;
+        } else if (!strcmp(buf, serialize_string(" ").str)) {
+          printf("Client wants to join a game\n");
+          // Dequeue Game (FIFO)
+          game_t *game = server->games->head->data.pointer;
+          game->isFull = TRUE;
+          game->players[1] = client;
+
+          // Acknowledge to the second client that we have started.
+          smart_send(client->socket, accepted_player_s_string.str,
+                     accepted_player_s_string.len + 1);
+
+          smart_broadcast(game->players, 2, clear_screen,
+                          strlen(clear_screen) + 1);
         } else if (deserialize_int(buf) == 2 &&
                    client->screen_state == HOME_PAGE) {
           // Create New Game
@@ -349,6 +366,9 @@ void server_serve(server_t *server) {
           game_t *game = client->game;
           game->validConnections = FALSE;
           struct node *next_head = head->next;
+          // Broadcast to the players that they must leave
+          smart_broadcast(game->players, 2, game_destroy_s_string,
+                          strlen(game_destroy_s_string) + 1);
           remove_node(server->games, (NodeValue){.pointer = game});
 
           server->current_game_hash =
@@ -401,6 +421,19 @@ void server_start(server_t *server) {
   server_serve(server);
 }
 
+void smart_broadcast(client_t **clients, size_t amount, char *message,
+                     size_t len) {
+  printf("SENDING TO %zu clients\n", amount);
+  size_t index = 0;
+  client_t *client = NULL;
+  while (index < amount) {
+    client = *(clients + index);
+    if (client != NULL)
+      smart_send(client->socket, message, len);
+    index += 1;
+  }
+}
+
 int server_unbind(server_t *server) {
   // TODO: Implement freeing and closing of sockets.
   NodeValue entry_id;
@@ -423,6 +456,10 @@ int server_unbind(server_t *server) {
   if (server->games != NULL)
     free_list(server->games);
   free(server);
+
+  free(accepted_name_s_string);
+  free(rejected_name_s_string);
+  free(accepted_player_s_string.str);
 
   printf("\x1b[33;1mAttempting to kill server instance now\x1b[0;0m\n");
   exit(0);

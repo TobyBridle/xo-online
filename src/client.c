@@ -55,6 +55,20 @@ int main() {
                  buffer);
           client->client_id = client_id;
           requires_username = TRUE;
+        } else if (client->screen_state == IN_GAME_PAGE) {
+          if (deserialize_int(buffer) == -1) {
+            // We must leave the game.
+            client->screen_state = GAME_VIEW_PAGE;
+            printf("\x1b[33;1mSorry, the game has ended!\r\n\x1b[0;0m");
+            sleep(1);
+            print_buffer(clear_screen);
+
+            // Send another request to the server
+            // to retrieve the list of games.
+            char *view_games_req = serialize_int(1);
+            smart_send(fds[0].fd, view_games_req, 7);
+            free(view_games_req);
+          }
         }
         print_buffer(buffer);
         // Prevent previous long messages leaking into new short messages
@@ -175,6 +189,26 @@ int main() {
           print_buffer(main_menu);
           free(s.str.str);
           s.str.str = NULL;
+        }
+        break;
+      case ' ':
+        if (client->screen_state == GAME_VIEW_PAGE) {
+          s.str = serialize_string(" ");
+          int sent;
+          while ((sent = smart_send(fds[0].fd, s.str.str, s.str.len + 1)) !=
+                 s.str.len + 1)
+            ;
+
+          // We might not be able to join the game.
+          // If we have not refreshed, the server will send us back a response
+          // with the updated games list.
+          int received = smart_recv(fds[0].fd, buffer, 1024);
+          s.str.str = deserialize_string(buffer);
+          if (!strcmp(s.str.str, "joined")) {
+            client->screen_state = IN_GAME_PAGE;
+          }
+          if (received > 0)
+            free(s.str.str);
         }
         break;
       case '1':

@@ -187,8 +187,6 @@ int main() {
           client->screen_state = HOME_PAGE;
           print_buffer(clear_screen);
           print_buffer(main_menu);
-          free(s.str.str);
-          s.str.str = NULL;
         }
         break;
       case ' ':
@@ -229,6 +227,7 @@ int main() {
           s.val = NULL;
           print_buffer(clear_screen);
           print_buffer(waiting_room);
+          client->screen_state = IN_GAME_PAGE;
         }
         break;
       case '3':

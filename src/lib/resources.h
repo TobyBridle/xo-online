@@ -9,7 +9,7 @@ StringResource clear_screen = "\x1b[2J\x1b[H";
 StringResource main_menu = "\x1b[;1mWelcome to XO Online!\n\n1)\tView Active "
                            "Games\n2)\tCreate new Game\n3)\tQuit\x1b[0;0m\n";
 
-StringResource game_info_template = "%'s game\t[%d/2]\n";
+StringResource game_info_template = "%s's game\t[%d/2]\n";
 
 StringResource view_games =
     "\x1b[32;1mThere %s currently %d "

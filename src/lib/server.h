@@ -76,7 +76,15 @@ void server_serve(server_t *server);
 
 // Helpers used by the server_serve function
 client_t server_accept(server_t *server);
-int server_handle(server_t *server, client_t *client, char *message);
+
+void handle_client_name_set(client_t *client, char *buf);
+void handle_game_create(server_t *server, client_t *client);
+int handle_game_join(server_t *server, client_t *client);
+void handle_client_disconnect(server_t *server, client_t *client,
+                              struct node *head, int client_id);
+
+int render_games_page(server_t *server, client_t *client);
+
 void smart_broadcast(client_t **clients, size_t amount, char *message,
                      size_t len);
 
@@ -96,5 +104,4 @@ int server_unbind(server_t *server);
  */
 /* void handle_commands(server_t *server, pid_t subprocess); */
 unsigned long hash_games_list(LinkedList *games);
-int render_games_page(server_t *server, client_t *client);
 #endif

@@ -22,4 +22,20 @@ StringResource waiting_room =
     "long, it might "
     "be best to leave the room\nand join someone someone else's "
     "game.\x1b[0;0m\n";
+
+StringResource playing_header = "\x1b[;1mYou're playing against %s!\n";
+
+const static char board_template[] = " %s | %s | %s\n"
+                                     "---+---+---\n"
+                                     " %s | %s | %s\n"
+                                     "---+---+---\n"
+                                     " %s | %s | %s\n";
+
+StringResource prefilled =
+    " \x1b[30;1m1\x1b[0;0m | \x1b[30;1m2\x1b[0;0m | \x1b[30;1m3\x1b[0;0m\n"
+    "---+---+---\n"
+    " \x1b[30;1m4\x1b[0;0m | \x1b[30;1m5\x1b[0;0m | \x1b[30;1m6\x1b[0;0m\n"
+    "---+---+---\n"
+    " \x1b[30;1m7\x1b[0;0m | \x1b[30;1m8\x1b[0;0m | \x1b[30;1m9\x1b[0;0m\n";
+
 #endif

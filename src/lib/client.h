@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/errno.h>
+#include <sys/ioctl.h>
 #include <sys/signal.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -53,6 +54,37 @@ void disable_raw_term();
 client_t *client_init();
 int client_connect(int server_fd, client_t *client);
 void client_disconnect(client_t *client);
+
+const static unsigned int BOARD_WIDTH = 3;
+
+typedef enum { SERVER, PLAYER, ENEMY } Source;
+typedef struct board_piece {
+  char piece;
+  Source type;        // In this instance, SERVER are uninitialised pieces.
+  char *print_string; // The coloured string that is output.
+} board_piece;
+
+static board_piece board[BOARD_WIDTH][BOARD_WIDTH] = {0};
+
+enum {
+  intermediate_mem = strlen("\x1b[31;1m%s\x1b[0;0m"),
+  board_mem = BOARD_WIDTH * BOARD_WIDTH * (intermediate_mem + 1),
+  printable_board_mem = sizeof(board_template) + board_mem + 1 + 1,
+};
+static char printable_board[printable_board_mem + 1]; // Each time we want
+                                                      // to print, we will
+// iterate over `board_template` and replace the %s with the correct string from
+// the board.
+static char intermediate[intermediate_mem + 1] = {0};
+
+void view_active_games(int socket, client_t *client, serialized *s);
+void create_new_game(int socket, client_t *client, serialized *s);
+void setup_game_dep();
+void handle_game_input(
+    client_t *client, unsigned int position,
+    Source source); // Position is 1-9, we then break this down into
+                    // the 3x3 grid using MOD and DIV
+void update_board();
 
 #ifndef HANDLE_SOCK_ERROR_FN
 #define HANDLE_SOCK_ERROR_FN

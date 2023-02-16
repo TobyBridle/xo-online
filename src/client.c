@@ -68,6 +68,8 @@ int main() {
             char *view_games_req = serialize_int(1);
             smart_send(fds[0].fd, view_games_req, 7);
             free(view_games_req);
+          } else {
+            handle_game_input(client, deserialize_int(buffer), ENEMY);
           }
         }
         print_buffer(buffer);
@@ -196,6 +198,7 @@ int main() {
           while ((sent = smart_send(fds[0].fd, s.str.str, s.str.len + 1)) !=
                  s.str.len + 1)
             ;
+          free(s.str.str);
 
           // We might not be able to join the game.
           // If we have not refreshed, the server will send us back a response
@@ -205,36 +208,71 @@ int main() {
             s.str.str = deserialize_string(buffer);
             if (!strcmp(s.str.str, "joined")) {
               client->screen_state = IN_GAME_PAGE;
+              setup_game_dep();
             }
             free(s.str.str);
           }
         }
         break;
       case '1':
-        if (client->screen_state == HOME_PAGE) { // View the existing games
-          s.val = serialize_int(1);
-          smart_send(fds[0].fd, s.val, 7);
-          free(s.val);
-          s.val = NULL;
-          client->screen_state = GAME_VIEW_PAGE;
+        switch (client->screen_state) {
+        case HOME_PAGE:
+          view_active_games(fds[0].fd, client, &s);
+          break;
+        case IN_GAME_PAGE:
+          handle_game_input(client, 1, PLAYER);
+          break;
+        default:
+          break;
         }
         break;
       case '2':
-        if (client->screen_state == HOME_PAGE) { // Create a New Game
-          s.val = serialize_int(2);
-          smart_send(fds[0].fd, s.val, 7);
-          free(s.val);
-          s.val = NULL;
-          print_buffer(clear_screen);
-          print_buffer(waiting_room);
-          client->screen_state = IN_GAME_PAGE;
+        switch (client->screen_state) {
+        case HOME_PAGE:
+          create_new_game(fds[0].fd, client, &s);
+          break;
+        case IN_GAME_PAGE:
+          handle_game_input(client, 2, PLAYER);
+          break;
+        default:
+          break;
         }
         break;
       case '3':
-        if (client->screen_state == HOME_PAGE) {
+        switch (client->screen_state) {
+        case HOME_PAGE:
           fds[0].fd = -1;
           break;
+        case IN_GAME_PAGE:
+          handle_game_input(client, 3, PLAYER);
+          break;
+        default:
+          break;
         }
+        break;
+      case '4':
+        if (client->screen_state == IN_GAME_PAGE)
+          handle_game_input(client, 4, PLAYER);
+        break;
+      case '5':
+        if (client->screen_state == IN_GAME_PAGE)
+          handle_game_input(client, 5, PLAYER);
+        break;
+      case '6':
+        if (client->screen_state == IN_GAME_PAGE)
+          handle_game_input(client, 6, PLAYER);
+        break;
+      case '7':
+        if (client->screen_state == IN_GAME_PAGE)
+          handle_game_input(client, 7, PLAYER);
+        break;
+      case '8':
+        if (client->screen_state == IN_GAME_PAGE)
+          handle_game_input(client, 8, PLAYER);
+        break;
+      case '9':
+        if (client->screen_state == IN_GAME_PAGE)
+          handle_game_input(client, 9, PLAYER);
         break;
       }
     }
@@ -332,7 +370,89 @@ void client_disconnect(client_t *client) {
   }
   printf("\x1b[32;1mSuccessfully disconnected from server\x1b[0m\n");
   free(client->client_name);
+
+  // Free the game board strings
+  int row, col;
+  for (int i = 0; i < BOARD_WIDTH * BOARD_WIDTH; i++) {
+    row = i / 3;
+    col = i % 3;
+    if (board[row][col].print_string != 0)
+      free(board[row][col].print_string);
+  }
   free(client);
+}
+
+void view_active_games(int socket, client_t *client, serialized *s) {
+  s->val = serialize_int(1);
+  smart_send(socket, s->val, 7);
+  free(s->val);
+  s->val = NULL;
+  client->screen_state = GAME_VIEW_PAGE;
+}
+
+void create_new_game(int socket, client_t *client, serialized *s) {
+  s->val = serialize_int(2);
+  smart_send(socket, s->val, 7);
+  free(s->val);
+  s->val = NULL;
+
+  print_buffer(clear_screen);
+  print_buffer(waiting_room);
+
+  setup_game_dep();
+
+  client->screen_state = IN_GAME_PAGE;
+}
+
+void setup_game_dep() {
+  int row, col;
+  for (int i = 0; i < BOARD_WIDTH * BOARD_WIDTH; i++) {
+    row = i / 3;
+    col = i % 3;
+    board[row][col] =
+        (board_piece){.piece = (1 + row + col) + '0',
+                      .type = SERVER}; // NOTE: This only works where
+                                       // BOARD_WIDTH * BOARD_WIDTH < 10
+    snprintf(intermediate, intermediate_mem + 1, "\x1b[30;1m%c\x1b[0;0m",
+             (i + 1) + '0');
+    board[row][col].print_string = strdup(intermediate);
+  }
+
+  update_board();
+}
+
+void handle_game_input(client_t *client, unsigned int position, Source source) {
+  if (position > (BOARD_WIDTH * BOARD_WIDTH) || position < 1)
+    return;
+  unsigned int row, col;
+  row = (position - 1) / 3;
+  col = (position - 1) % 3;
+
+  if (board[row][col].type != SERVER) // It has already been taken.
+    return;
+
+  free(board[row][col].print_string);
+  board[row][col] = (board_piece){.piece = position, .type = source};
+  snprintf(intermediate, intermediate_mem + 1, "\x1b[3%d;1m%c\x1b[0;0m",
+           source == PLAYER ? 3 : 1,
+           source == PLAYER ? 'x' : 'o'); // 3 -> 33 -> Green, 1 -> 31 -> Red
+  board[row][col].print_string = strdup(intermediate);
+
+  update_board();
+
+  printf("\033[s");
+  printf("\033[2B");
+  print_buffer(printable_board);
+  printf("\033[u");
+}
+
+void update_board() {
+  snprintf(printable_board, printable_board_mem + 1, board_template,
+           board[0][0].print_string, board[0][1].print_string,
+           board[0][2].print_string, board[1][0].print_string,
+           board[1][1].print_string, board[1][2].print_string,
+           board[2][0].print_string, board[2][1].print_string,
+           board[2][2].print_string);
 }
 
 void print_buffer(char *buf) {

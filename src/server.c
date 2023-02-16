@@ -43,7 +43,7 @@ int main() {
 server_t *server_init(short port) {
   printf("\x1b[33;1mAttempting to initialise server on port %d\x1b[0m\n", port);
   server_t *server;
-  server = (server_t *)malloc(sizeof(server_t));
+  server = malloc(sizeof(server_t));
   server->port = port;
   // We want to create a socket for the server
   int socket_fd = socket(AF_INET, SOCK_STREAM, TCP);
@@ -376,7 +376,6 @@ void handle_game_create(server_t *server, client_t *client) {
 }
 
 int handle_game_join(server_t *server, client_t *client) {
-  printf("Client wants to join a game\n");
   // Dequeue Game (FIFO)
   NodeValue node = pop_node(server->games);
   //  There are no games.
@@ -391,11 +390,49 @@ int handle_game_join(server_t *server, client_t *client) {
   game->players[1] = client;
   client->game = game;
 
-  // Acknowledge to the second client that we have started.
-  smart_send(client->socket, accepted_player_s_string.str,
-             accepted_player_s_string.len + 1);
+  // Acknowledge to the second client that we have started and
+  // notify the host of a player joining.
+  smart_broadcast(game->players, 2, accepted_player_s_string.str,
+                  accepted_player_s_string.len + 1);
 
   smart_broadcast(game->players, 2, clear_screen, strlen(clear_screen) + 1);
+
+  unsigned int player_one_len = strlen(game->players[0]->client_name);
+  unsigned int player_two_len = strlen(game->players[1]->client_name);
+
+  // Doing this means that we can use the same memory and just overwrite it.
+  size_t formatted_length =
+      strlen(playing_header) + MAX(player_one_len, player_two_len) + 1;
+  char *formatted = calloc(formatted_length, sizeof(char));
+
+  if (player_two_len > player_one_len) {
+    // We will send the shorter string first (player 1)
+    snprintf(formatted, formatted_length, playing_header,
+             game->players[0]->client_name);
+    smart_send(game->players[1]->socket, formatted, formatted_length);
+
+    // Then we send the longer string (it will override the shorter one, meaning
+    // we can use the same memory space)
+    snprintf(formatted, formatted_length, playing_header,
+             game->players[1]->client_name);
+    smart_send(game->players[0]->socket, formatted, formatted_length);
+    free(formatted);
+  } else {
+    snprintf(formatted, formatted_length, playing_header,
+             game->players[1]->client_name);
+    smart_send(game->players[0]->socket, formatted, formatted_length);
+
+    snprintf(formatted, formatted_length, playing_header,
+             game->players[0]->client_name);
+    smart_send(game->players[1]->socket, formatted, formatted_length);
+    free(formatted);
+  }
+
+  // Instruct the client to print the prefilled board and then reset their
+  // position.
+  smart_broadcast(game->players, 2, "\033[s", 4);
+  smart_broadcast(game->players, 2, prefilled, strlen(prefilled));
+  smart_broadcast(game->players, 2, "\033[r", 4); // Restore.
   return 0;
 }
 

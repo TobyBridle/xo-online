@@ -332,10 +332,14 @@ client_t *client_init() {
 
 int client_connect(int server_fd, client_t *client) {
   printf("\x1b[33;1mAttempting to connect to server\x1b[0m\r\n");
-  struct sockaddr_in server_addr = {.sin_family = AF_INET,
-                                    .sin_addr = INADDR_ANY,
-                                    .sin_len = sizeof(server_addr),
-                                    .sin_port = htons(PORT)};
+  struct sockaddr_in server_addr;
+  memset(&server_addr, 0, sizeof(server_addr));
+  server_addr.sin_family = AF_INET;
+  server_addr.sin_port = htons(PORT);
+  if (inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr) != 1) {
+    fprintf(stderr, "Could not initialise address!\n");
+    exit(EXIT_FAILURE);
+  }
   int connect_status =
       connect(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));
   if (connect_status == -1 && server_fd == client->socket) {

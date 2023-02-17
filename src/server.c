@@ -1,7 +1,5 @@
 #include "lib/server.h"
-#include "lib/client.h"
 #include "lib/resources.h"
-#include "lib/utils.h"
 
 #define PORT 80
 

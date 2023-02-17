@@ -1,5 +1,6 @@
 #include "../src/lib/utils.h"
 #include "generics.h"
+#include <arpa/inet.h>
 #include <string.h>
 
 TestResult test_int_serialize() {
@@ -37,10 +38,14 @@ TestResult test_client_serialize() {
   client->socket = 1;
   client->client_id = 2;
   client->client_name = "Toby Bridle";
-  struct sockaddr_in addr = {.sin_family = AF_INET,
-                             .sin_addr = INADDR_ANY,
-                             .sin_len = sizeof(addr),
-                             .sin_port = htons(5000)};
+  struct sockaddr_in addr;
+  memset(&addr, 0, sizeof(struct sockaddr_in));
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(5000);
+  if (inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr) != 1) {
+    fprintf(stderr, "Could not initialise address!\n");
+    exit(EXIT_FAILURE);
+  }
   client->addr = addr;
   char *serialized = serialize_client(client);
   client_t *deserialized = deserialize_client(serialized);
@@ -49,6 +54,7 @@ TestResult test_client_serialize() {
   EXPECT_EQ(strcmp(deserialized->client_name, "Toby Bridle"), 0);
   EXPECT_EQ(deserialized->addr.sin_family, AF_INET);
   EXPECT_EQ(deserialized->addr.sin_port, htons(5000));
+  EXPECT_EQ(deserialized->addr.sin_addr.s_addr, client->addr.sin_addr.s_addr)
 
   free(deserialized->client_name);
   free(deserialized);

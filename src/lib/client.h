@@ -2,7 +2,7 @@
 #define NOUGHTS_CROSSES_CLIENT_H
 #include "resources.h"
 #include "utils.h"
-#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -55,7 +55,7 @@ client_t *client_init();
 int client_connect(int server_fd, client_t *client);
 void client_disconnect(client_t *client);
 
-const static unsigned int BOARD_WIDTH = 3;
+#define BOARD_WIDTH 3
 
 typedef enum { SERVER, PLAYER, ENEMY } Source;
 typedef struct board_piece {
@@ -66,11 +66,10 @@ typedef struct board_piece {
 
 static board_piece board[BOARD_WIDTH][BOARD_WIDTH] = {0};
 
-enum {
-  intermediate_mem = strlen("\x1b[31;1m%s\x1b[0;0m"),
-  board_mem = BOARD_WIDTH * BOARD_WIDTH * (intermediate_mem + 1),
-  printable_board_mem = sizeof(board_template) + board_mem + 1 + 1,
-};
+#define intermediate_mem (sizeof("\x1b[31;1m%s\x1b[0;0m"))
+#define board_mem (BOARD_WIDTH * BOARD_WIDTH * intermediate_mem)
+#define printable_board_mem (sizeof(board_template) + board_mem)
+
 static char printable_board[printable_board_mem + 1]; // Each time we want
                                                       // to print, we will
 // iterate over `board_template` and replace the %s with the correct string from

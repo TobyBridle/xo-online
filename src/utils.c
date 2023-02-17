@@ -543,108 +543,108 @@ char *serialize_enum(int e) {
 int deserialize_enum(char *buf) { return buf[2]; }
 
 char *serialize_client(client_t *client) {
-  // Fields of client_t:
-  // int socket;
-  // int client_id;
-  // char *client_name;
-  // struct sockaddr_in addr;
-  // enum {
-  //   NOUGHT,
-  //   CROSS,
-  //   SPECTATOR
-  // } player_type;
+  unsigned int buf_length =
+      2 + 1; // 2 for the type & len, 1 for the null terminator.
 
-  // The length of fields (when serialized) are:
-  // Note: This excludes the NULL terminator
-  // int socket: 6
-  // int client_id: 6
-  // char *client_name: strlen(client_name) + 2
-  // struct sockaddr_in addr: 16
-  // enum player_type: 3
+  // Serialize the Socket Field
+  char *client_socket_f = serialize_int(client->socket); // Adds 6 bytes.
+  buf_length += 6;
 
-  int len = 6 + 6 + strlen(client->client_name) + 2 + 16 + 9;
-  char *buf = calloc(len + 2, 1);
+  // Serialize the Client ID Field
+  char *client_id_f = serialize_int(client->client_id); // Another 6 bytes.
+  buf_length += 6;
 
-  // Setting serialized bytes info
+  // Serialize the Client Name Field
+  serialized_string client_name_f = serialize_string(client->client_name);
+  // `.len` is the length of the contained string (including null byte.)
+  // We want to ignore the null byte.
+  buf_length +=
+      client_name_f.len + 2; // +2 for the type & len, -1 to remove null byte.
+
+  // Serialize the Addr Fields.
+  // Serialize the Addr Port.
+  char *client_sin_port_f = serialize_int(client->addr.sin_port);
+  buf_length += 6;
+
+  // Serialize the Addr Family.
+  char *client_sin_family_f = serialize_int(client->addr.sin_family);
+  buf_length += 6;
+
+  // Serialize the Addr Address
+  char *client_sin_addr_f = serialize_int(client->addr.sin_addr.s_addr);
+  buf_length += 6;
+
+  char *buf = calloc(buf_length, sizeof(char));
   buf[0] = 0x04;
-  buf[1] = len;
+  buf[1] =
+      buf_length - 2 - 1; // Get rid of the length field and the null terminator
+  // Move the Socket Field into the Buffer.
+  unsigned int buf_offset = 2;
+  memcpy(buf + buf_offset, client_socket_f, 6);
+  buf_offset += 6;
 
-  // Serializing fields
-  serialized_string client_name = serialize_string(client->client_name);
-  char *serialized_int;
+  // Move the Client ID Field into the Buffer.
+  memcpy(buf + buf_offset, client_id_f, 6);
+  buf_offset += 6;
 
-  serialized_int = serialize_int(client->socket);
-  memcpy(buf + 2, serialized_int, 6);
-  free(serialized_int);
+  // Move the Addr Fields into the Buffer.
+  // Move the Addr Port field into the Buffer.
+  memcpy(buf + buf_offset, client_sin_port_f, 6);
+  buf_offset += 6;
 
-  serialized_int = serialize_int(client->client_id);
-  memcpy(buf + 8, serialized_int, 6);
-  free(serialized_int);
+  // Move the Addr Family field into the Buffer.
+  memcpy(buf + buf_offset, client_sin_family_f, 6);
+  buf_offset += 6;
 
-  memcpy(buf + 14, client_name.str, strlen(client->client_name) + 2);
-  free(client_name.str);
+  // Move the Addr Address field into the Buffer.
+  memcpy(buf + buf_offset, client_sin_addr_f, 6);
+  buf_offset += 6;
 
-  // We need to serialize the struct sockaddr_in addr
-  // Fields:
-  // .sin_family (enum),
-  // .sin_addr (struct in_addr),
-  // .sin_len (unsigned char),
-  // .sin_port (unsigned short),
+  // Move the Client Name Field into the Buffer.
+  memcpy(buf + buf_offset, client_name_f.str, client_name_f.len + 2 - 1);
+  buf_offset += client_name_f.len + 2;
 
-  // Serializing the sin_family using serialize_enum
-  char *enum_serialize;
-  enum_serialize = serialize_enum(client->addr.sin_family);
-  memcpy(buf + 15 + strlen(client->client_name) + 2, enum_serialize, 3);
-  free(enum_serialize);
+  // Free the intermediate values.
+  free(client_socket_f);
+  free(client_id_f);
+  free(client_sin_port_f);
+  free(client_sin_family_f);
+  free(client_sin_addr_f);
+  free(client_name_f.str);
 
-  // Serializing the sin_addr using serialize_int
-  serialized_int = serialize_int(client->addr.sin_addr.s_addr);
-  memcpy(buf + 18 + strlen(client->client_name) + 2, serialized_int, 6);
-  free(serialized_int);
-
-  // Serializing the sin_len using serialize_int
-  serialized_int = serialize_int(client->addr.sin_len);
-  memcpy(buf + 24 + strlen(client->client_name) + 2, serialized_int, 6);
-  free(serialized_int);
-
-  // Serializing the sin_port using serialize_int
-  serialized_int = serialize_int(client->addr.sin_port);
-  memcpy(buf + 30 + strlen(client->client_name) + 2, serialized_int, 6);
-  free(serialized_int);
-
-  // Serializing the player_type using serialize_enum
-  enum_serialize = serialize_enum(client->player_type);
-  memcpy(buf + 36 + strlen(client->client_name) + 2, enum_serialize, 3);
-  free(enum_serialize);
   return buf;
 }
 
 client_t *deserialize_client(char *buf) {
-  // Fields of client_t:
-  // int socket;
-  // int client_id;
-  // char *client_name;
-  // struct sockaddr_in addr;
-  // enum {
-  //   NOUGHT,
-  //   CROSS,
-  //   SPECTATOR
-  // } player_type;
+  if (buf == NULL ||
+      buf[0] != 0x04) // Make sure that it is a serialized client_t
+    return NULL;
+  client_t *client = calloc(1, sizeof(client_t));
+  unsigned int offset = 2; // We want to ignore the type & length data. Each
+                           // call to `deserialize_int` will add 6 to this.
 
-  client_t *client = malloc(sizeof(client_t));
-  client->socket = deserialize_int(buf + 2);
-  client->client_id = deserialize_int(buf + 8);
-  client->client_name = deserialize_string(buf + 14);
-  client->addr.sin_family =
-      deserialize_enum(buf + 15 + strlen(client->client_name) + 2);
-  client->addr.sin_addr.s_addr =
-      deserialize_int(buf + 18 + strlen(client->client_name) + 2);
-  client->addr.sin_len =
-      deserialize_int(buf + 24 + strlen(client->client_name) + 2);
-  client->addr.sin_port =
-      deserialize_int(buf + 30 + strlen(client->client_name) + 2);
-  client->player_type =
-      deserialize_enum(buf + 36 + strlen(client->client_name) + 2);
+  // Deserialize the Socket Field
+  client->socket = deserialize_int(buf + offset);
+  offset += 6;
+
+  // Deserialize the id
+  client->client_id = deserialize_int(buf + offset);
+  offset += 6;
+
+  // Deserialize the ADDR Port
+  client->addr.sin_port = deserialize_int(buf + offset);
+  offset += 6;
+
+  // Deserialize the ADDR Family
+  client->addr.sin_family = deserialize_int(buf + offset);
+  offset += 6;
+
+  // Deserialize the ADDR Address
+  client->addr.sin_addr.s_addr = deserialize_int(buf + offset);
+  offset += 6;
+
+  // Deserialize the Client Name
+  client->client_name = deserialize_string(buf + offset);
 
   return client;
 }

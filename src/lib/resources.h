@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-#define StringResource const static char *
+#define StringResource static const char *
 
 StringResource clear_screen = "\x1b[2J\x1b[H";
 StringResource main_menu = "\x1b[;1mWelcome to XO Online!\n\n1)\tView Active "

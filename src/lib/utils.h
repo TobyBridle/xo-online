@@ -36,12 +36,25 @@
 #define GAME_SIG_CONFIRM 10
 #endif
 
+#ifndef GAME_SIG_WIN
+#define GAME_SIG_WIN 11
+#endif
+
+#ifndef GAME_SIG_DRAW
+#define GAME_SIG_DRAW 12
+#endif
+
+#ifndef GAME_SIG_CONFIRM_END
+#define GAME_SIG_CONFIRM_END 13
+#endif
+
 #ifndef GAME_SIG_EXIT
 #define GAME_SIG_EXIT -10
 #endif
 
 #define is_game_sig(sig)                                                       \
-  (sig == GAME_SIG_EXIT || sig == GAME_SIG_CHECK || sig == GAME_SIG_CONFIRM)
+  (sig == GAME_SIG_EXIT || sig == GAME_SIG_CHECK || sig == GAME_SIG_CONFIRM || \
+   sig == GAME_SIG_WIN || sig == GAME_SIG_DRAW || sig == GAME_SIG_CONFIRM_END)
 
 #include <ctype.h>
 #include <netinet/in.h>

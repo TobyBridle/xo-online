@@ -70,11 +70,20 @@ int main() {
             free(view_games_req);
           } else if (is_game_sig(buffer[0])) {
             // Switch out the buffer type so we can deserialize it
-            buffer[0] = INT_SERIALIZE_FLAG;
-            int pos = deserialize_int(buffer);
-            if (pos > 0 && pos <= BOARD_WIDTH * BOARD_WIDTH) {
-              handle_game_input(fds[0].fd, client, pos, ENEMY);
+            int signal;
+            switch (buffer[0]) {
+            case GAME_SIG_CHECK:
+            case GAME_SIG_CONFIRM:
+            case GAME_SIG_EXIT:
+              buffer[0] = INT_SERIALIZE_FLAG;
+              signal = deserialize_int(
+                  buffer); // Signal may be a position on the board
+                           // or a signal to check for a condition (e.g win)
+              break;
+            default:
+              signal = buffer[0];
             }
+            handle_game_input(fds[0].fd, client, signal, ENEMY);
           }
         }
         print_buffer(buffer);
@@ -233,7 +242,7 @@ int main() {
           view_active_games(fds[0].fd, client, &s);
           break;
         case IN_GAME_PAGE:
-          handle_game_input(client, 1, PLAYER);
+          handle_game_input(fds[0].fd, client, 1, PLAYER);
           break;
         default:
           break;
@@ -245,7 +254,7 @@ int main() {
           create_new_game(fds[0].fd, client, &s);
           break;
         case IN_GAME_PAGE:
-          handle_game_input(client, 2, PLAYER);
+          handle_game_input(fds[0].fd, client, 2, PLAYER);
           break;
         default:
           break;
@@ -257,7 +266,7 @@ int main() {
           fds[0].fd = -1;
           break;
         case IN_GAME_PAGE:
-          handle_game_input(client, 3, PLAYER);
+          handle_game_input(fds[0].fd, client, 3, PLAYER);
           break;
         default:
           break;
@@ -265,27 +274,27 @@ int main() {
         break;
       case '4':
         if (client->screen_state == IN_GAME_PAGE)
-          handle_game_input(client, 4, PLAYER);
+          handle_game_input(fds[0].fd, client, 4, PLAYER);
         break;
       case '5':
         if (client->screen_state == IN_GAME_PAGE)
-          handle_game_input(client, 5, PLAYER);
+          handle_game_input(fds[0].fd, client, 5, PLAYER);
         break;
       case '6':
         if (client->screen_state == IN_GAME_PAGE)
-          handle_game_input(client, 6, PLAYER);
+          handle_game_input(fds[0].fd, client, 6, PLAYER);
         break;
       case '7':
         if (client->screen_state == IN_GAME_PAGE)
-          handle_game_input(client, 7, PLAYER);
+          handle_game_input(fds[0].fd, client, 7, PLAYER);
         break;
       case '8':
         if (client->screen_state == IN_GAME_PAGE)
-          handle_game_input(client, 8, PLAYER);
+          handle_game_input(fds[0].fd, client, 8, PLAYER);
         break;
       case '9':
         if (client->screen_state == IN_GAME_PAGE)
-          handle_game_input(client, 9, PLAYER);
+          handle_game_input(fds[0].fd, client, 9, PLAYER);
         break;
       }
     }
@@ -339,6 +348,7 @@ client_t *client_init() {
   }
 
   client->screen_state = SETUP_PAGE;
+  client->game = NULL;
 
   return client;
 }
@@ -393,9 +403,10 @@ void client_disconnect(client_t *client) {
   for (int i = 0; i < BOARD_WIDTH * BOARD_WIDTH; i++) {
     row = i / 3;
     col = i % 3;
-    if (board[row][col].print_string != 0)
+    if (board[row][col].type != SERVER)
       free(board[row][col].print_string);
   }
+  free(client->game);
   free(client);
 }
 
@@ -441,21 +452,53 @@ void setup_game_dep() {
   update_board(PLAYER);
 }
 
-void handle_game_input(client_t *client, unsigned int position, Source source) {
-  if (position > (BOARD_WIDTH * BOARD_WIDTH) || position < 1)
+void handle_game_input(int socket, client_t *client, unsigned int position,
+                       Source source) {
+  // Define up here so we can check in the handle_game_win
+  int game_over;
+
+  // Check if the signal is related to the game state (e.g ending /
+  // drawing)
+  if (source == ENEMY && position == GAME_SIG_WIN || position == GAME_SIG_DRAW)
+    goto handle_game_win;
+
+  // We are attempting to play when it is not our turn
+  if (source == PLAYER && !((game_t *)client->game)->isCurrentPlayerTurn)
     return;
+
   unsigned int row, col;
   row = (position - 1) / 3;
   col = (position - 1) % 3;
 
-  if (board[row][col].type != SERVER) // It has already been taken.
+  // The other player is attempting to play when it is our turn.
+  int is_other_player_attempting =
+      source == ENEMY && ((game_t *)client->game)->isCurrentPlayerTurn;
+  // The position is invalid (we only end up here if none of the signals
+  // match ones such as GAME_SIG_WIN so this must have the intention of
+  // being a position)
+  int is_position_invalid =
+      position > (BOARD_WIDTH * BOARD_WIDTH) || position < 1;
+
+  if (is_other_player_attempting || is_position_invalid) {
+    char *confirm_message = serialize_bool(FALSE);
+    confirm_message[0] = GAME_SIG_CONFIRM;
+    smart_send(socket, confirm_message, 4);
+    free(confirm_message);
     return;
+  } else if (board[row][col].type != SERVER) { // Position is already occupied.
+    char *confirm_message = serialize_bool(FALSE);
+    confirm_message[0] = GAME_SIG_CONFIRM;
+    smart_send(socket, confirm_message, 4);
+    free(confirm_message);
+    return;
+  }
 
   // All checks have been passed, update the board
   if (source == ENEMY) {
     char *confirm_message = serialize_bool(TRUE);
     confirm_message[0] = GAME_SIG_CONFIRM;
     smart_send(socket, confirm_message, 4);
+    free(confirm_message);
     goto change_board;
   }
 
@@ -479,10 +522,10 @@ void handle_game_input(client_t *client, unsigned int position, Source source) {
 
 change_board:
 
-  free(board[row][col].print_string);
-  board[row][col] = (board_piece){.piece = position, .type = source};
+  board[row][col].piece = position;
+  board[row][col].type = source;
   snprintf(intermediate, intermediate_mem + 1, "\x1b[3%d;1m%c\x1b[0;0m",
-           source == PLAYER ? 2 : 1, source == PLAYER ? 2 : 1,
+           source == PLAYER ? 2 : 1,
            source == PLAYER ? 'x' : 'o'); // 2 -> 32 -> Green, 1 -> 31 -> Red
   board[row][col].print_string = strdup(intermediate);
 
@@ -495,6 +538,55 @@ change_board:
 
   ((game_t *)client->game)->isCurrentPlayerTurn ^= 1; // Switch turns.
   printf("\0338");
+
+  // We don't NEED to check anything else if we are just accepting an
+  // enemy position
+  if (source == ENEMY)
+    return;
+
+  // Check if we have won.
+  game_over = is_game_over(PLAYER);
+  if (game_over > 0) {
+    char *check_game_over = serialize_bool(TRUE);
+    check_game_over[0] = game_over == 1 ? GAME_SIG_WIN : GAME_SIG_DRAW;
+    smart_send(socket, check_game_over, 4);
+
+    // Wait for the response.
+    char res[4] = {0};
+    while (smart_recv(socket, res, 4) < 0 && res[0] != GAME_SIG_CONFIRM_END)
+      ;
+
+    res[0] = BOOL_SERIALIZE_FLAG;
+    if (deserialize_bool(res) == TRUE) {
+      // The other player agrees with our decision.
+      printf("You have %s the game!\r\n", game_over == 1 ? "won" : "drawn");
+      // Delay the program for 1s, then recieve the server message.
+      sleep(1);
+    }
+    free(check_game_over);
+  }
+  return;
+
+handle_game_win:
+  game_over = is_game_over(ENEMY);
+  // Convert from the defined values to the enum values (e.g 12 is Draw -> 2 for
+  // Draw)
+  if (game_over == (position - 10)) {
+    // Send back a confirmation message to the enemy.
+    char *game_win_confirmation = serialize_bool(TRUE);
+    game_win_confirmation[0] = GAME_SIG_CONFIRM_END;
+    smart_send(socket, game_win_confirmation, 4);
+    free(game_win_confirmation);
+
+    printf("\033[AYou have %s the game!\r\n",
+           game_over == 1 ? "lost" : "drawn");
+    sleep(1);
+  } else {
+    char *game_win_denial = serialize_bool(FALSE);
+    game_win_denial[0] = GAME_SIG_CONFIRM_END;
+    smart_send(socket, game_win_denial, 4);
+    free(game_win_denial);
+  }
 }
 
 void update_board(int source) {
@@ -504,6 +596,45 @@ void update_board(int source) {
            board[1][1].print_string, board[1][2].print_string,
            board[2][0].print_string, board[2][1].print_string,
            board[2][2].print_string, source != PLAYER ? "currently" : "not");
+}
+
+int is_game_over(Source source) {
+  // Since the player enum value is 0 and there are no other
+  // values in the enum < 0, we can do !(val) to see if it is
+  // the player value.
+  int win_horizontal =
+      IS_ROW_WON(0, source) || IS_ROW_WON(1, source) || IS_ROW_WON(2, source);
+  if (win_horizontal)
+    return 1;
+
+  int win_vertical =
+      IS_COL_WON(0, source) || IS_COL_WON(1, source) || IS_COL_WON(2, source);
+  if (win_vertical)
+    return 1;
+
+  int win_diagonal =
+      (board[0][0].type == source && board[1][1].type == source &&
+       board[2][2].type == source) ||
+      (board[2][0].type == source && board[1][1].type == source &&
+       board[0][2].type == source);
+  if (win_diagonal)
+    return 1;
+
+  // Check if any spaces are left
+  BOOL is_space_left = FALSE;
+  int row, col;
+  for (int pos = 0; pos < BOARD_WIDTH * BOARD_WIDTH; pos++) {
+    row = pos / 3;
+    col = pos % 3;
+    if (board[row][col].type == SERVER) {
+      is_space_left = TRUE;
+      break;
+    }
+  }
+
+  if (!is_space_left)
+    return 2;
+  return 0;
 }
 
 void print_buffer(char *buf) {

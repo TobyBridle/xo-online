@@ -264,16 +264,30 @@ void server_serve(server_t *server) {
         } else if (client->game != NULL && is_game_sig(buf[0])) {
           game_t *game = client->game;
           int sig_type = buf[0];
+          int buf_len = buf[1] + 3;
           int is_sender_player =
               game->players[game->isCurrentPlayerTurn]->socket ==
               client->socket;
           if (sig_type == GAME_SIG_CHECK && is_sender_player) {
             smart_send(game->players[!game->isCurrentPlayerTurn]->socket, buf,
-                       7);
+                       buf_len);
           } else if (sig_type == GAME_SIG_CONFIRM && !is_sender_player) {
             smart_send(game->players[game->isCurrentPlayerTurn]->socket, buf,
-                       4);
+                       buf_len);
             game->isCurrentPlayerTurn ^= 1;
+          } else if (sig_type == GAME_SIG_WIN || sig_type == GAME_SIG_DRAW) {
+            smart_send(game->players[game->isCurrentPlayerTurn]->socket, buf,
+                       buf_len);
+          } else if (sig_type == GAME_SIG_CONFIRM_END) {
+            smart_send(game->players[!game->isCurrentPlayerTurn]->socket, buf,
+                       buf_len);
+            if (deserialize_bool(buf)) { // The game has ended.
+              game->players[0]->screen_state = game->players[1]->screen_state =
+                  GAME_VIEW_PAGE;
+              game->players[0]->last_sent_game_hash =
+                  game->players[1]->last_sent_game_hash = 0;
+              handle_game_unbind(server, game->players[0]);
+            }
           }
         }
         if (received > 0)
@@ -322,7 +336,6 @@ void server_start(server_t *server) {
 
 void smart_broadcast(client_t **clients, size_t amount, char *message,
                      size_t len) {
-  printf("SENDING TO %zu clients\n", amount);
   size_t index = 0;
   client_t *client = NULL;
   while (index < amount) {
@@ -334,7 +347,6 @@ void smart_broadcast(client_t **clients, size_t amount, char *message,
 }
 
 int server_unbind(server_t *server) {
-  // TODO: Implement freeing and closing of sockets.
   NodeValue entry_id;
 
   // NOTE: This block is almost identical
@@ -346,6 +358,8 @@ int server_unbind(server_t *server) {
     while (recv(client->socket, NULL, 1024, 0) > 0)
       ;
     close(client->socket);
+    free(client->client_name);
+    free(client->game);
     printf("\x1b[32;1mClosed connection from Client %d\x1b[0;0m\n",
            client->client_id);
     remove_value(&server->clients, entry_id.i_value);
@@ -386,7 +400,7 @@ void handle_game_create(server_t *server, client_t *client) {
     return;
   game_t *game = calloc(1, sizeof(game_t));
 
-  game->isFull = game->playerTurn = 0;
+  game->isFull = game->isCurrentPlayerTurn = 0;
   /* game->spectators = *init_list(); */
   game->players[0] = client;
   game->validConnections = TRUE;
@@ -403,10 +417,7 @@ int handle_game_join(server_t *server, client_t *client) {
   NodeValue node = pop_node(server->games);
   //  There are no games.
   if (node.err == -1) {
-<<<<<<< HEAD
-=======
     render_games_page(server, client);
->>>>>>> 81419b3 (fix: 🐛 client return from waiting room->game view)
     return -3; // This will be evaluated and used to continue the loop it was
                // called in
   }

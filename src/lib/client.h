@@ -57,7 +57,7 @@ void client_disconnect(client_t *client);
 
 #define BOARD_WIDTH 3
 
-typedef enum { SERVER, PLAYER, ENEMY } Source;
+typedef enum { PLAYER = 0, ENEMY = 1, SERVER = 2 } Source;
 typedef struct board_piece {
   char piece;
   Source type;        // In this instance, SERVER are uninitialised pieces.
@@ -76,14 +76,35 @@ static char printable_board[printable_board_mem + 1]; // Each time we want
 // the board.
 static char intermediate[intermediate_mem + 1] = {0};
 
+typedef struct {
+  /* uint8_t game_id; */
+  client_t *players[2];
+  /* LinkedList spectators; */
+  BOOL isCurrentPlayerTurn; // Either 0 or 1
+  BOOL validConnections;
+  BOOL isFull;
+} game_t;
+
 void view_active_games(int socket, client_t *client, serialized *s);
 void create_new_game(int socket, client_t *client, serialized *s);
 void setup_game_dep();
 void handle_game_input(
-    client_t *client, unsigned int position,
+    int socket, client_t *client, unsigned int position,
     Source source); // Position is 1-9, we then break this down into
                     // the 3x3 grid using MOD and DIV
 void update_board(int source);
+
+// Returns 0 if not, 1 if the game
+// has ended in a win and 2 if the game was a draw.
+int is_game_over(Source source);
+
+#define IS_ROW_WON(row_num, source)                                            \
+  (board[row_num][0].type == source && board[row_num][1].type == source &&     \
+   board[row_num][2].type == source)
+
+#define IS_COL_WON(col_num, source)                                            \
+  (board[0][col_num].type == source && board[1][col_num].type == source &&     \
+   board[2][col_num].type == source)
 
 #ifndef HANDLE_SOCK_ERROR_FN
 #define HANDLE_SOCK_ERROR_FN

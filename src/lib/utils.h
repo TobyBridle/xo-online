@@ -28,6 +28,7 @@
 #define NEXT_ITER(head) head = head->next != NULL ? head->next : NULL;
 #endif
 
+
 #include <ctype.h>
 #include <netinet/in.h>
 typedef struct {
@@ -171,11 +172,9 @@ void handle_sock_error(int err);
 // - bool (int)
 // - char
 // - client_t
-// - error
 
 // The first byte will be the type of data we are sending.
-// e.g. 0x01 for int, 0x02 for bool, 0x03 for string, 0x04 for client_t, 0x05
-// for error
+// e.g. 0x01 for int, 0x02 for bool, 0x03 for string, 0x04 for client_t
 
 // The second byte will be the size of the data we are sending.
 // This will be represented using hexadecimals.
@@ -256,12 +255,29 @@ typedef union {
   char *val;
 } serialized;
 
+#ifndef INT_SERIALIZE_FLAG
+#define INT_SERIALIZE_FLAG 0x01
+#endif
 char *serialize_int(int i);
+
+#ifndef BOOL_SERIALIZE_FLAG
+#define BOOL_SERIALIZE_FLAG 0x02
+#endif
 char *serialize_bool(int b); // Where b = 0 or 1
+
+#ifndef STRING_SERIALIZE_FLAG
+#define STRING_SERIALIZE_FLAG 0x03
+#endif
 serialized_string serialize_string(char *str);
+
+#ifndef CLIENT_SERIALIZE_FLAG
+#define CLIENT_SERIALIZE_FLAG 0x04
+#endif
 char *serialize_client(client_t *client);
-char *serialize_error(int err); // We will use `serialize_int` to serialize the
-                                // error and then change the first byte to 0x05
+
+#ifndef ENUM_SERIALIZE_FLAG
+#define ENUM_SERIALIZE_FLAG 0x05
+#endif
 char *serialize_enum(int e);
 
 typedef union {

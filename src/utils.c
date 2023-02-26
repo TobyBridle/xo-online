@@ -452,7 +452,7 @@ char *serialize_int(int i) {
   // ---- ---- ---- ---- ---- ----
   // 6 Bytes + NULL Terminator
   char *buf = calloc(7, sizeof(char));
-  buf[0] = 0x01;
+  buf[0] = INT_SERIALIZE_FLAG;
   buf[1] = 0x04;
   buf[2] = (i >> 24) & 0xFF;
   buf[3] = (i >> 16) & 0xFF;
@@ -463,6 +463,9 @@ char *serialize_int(int i) {
 }
 
 int deserialize_int(char *buf) {
+  // The buffer is not a serialized int
+  if (buf[0] != INT_SERIALIZE_FLAG)
+    return -1;
   int i = 0;
   i |= buf[2] << 24;
   i |= buf[3] << 16;
@@ -472,18 +475,22 @@ int deserialize_int(char *buf) {
 }
 
 char *serialize_bool(BOOL b) {
-  // 0x01 0x01 0x00
+  // 0x01 0x01 0x01 0x00
   // ---- ---- ----
   // 3 Bytes + NULL Terminator
   char *buf = calloc(4, sizeof(char));
-  buf[0] = 0x01;
+  buf[0] = BOOL_SERIALIZE_FLAG;
   buf[1] = 0x01;
   buf[2] = b ? 0x01 : 0x00;
   buf[3] = '\0';
   return buf;
 }
 
-BOOL deserialize_bool(char *buf) { return buf[2] == 0x01; }
+BOOL deserialize_bool(char *buf) {
+  if (buf[0] != BOOL_SERIALIZE_FLAG)
+    return -1;
+  return buf[2] == 0x01;
+}
 
 serialized_string serialize_string(char *str) {
   // 0x03 0x02 0x00 0x00
@@ -503,7 +510,7 @@ serialized_string serialize_string(char *str) {
   }
 
   char *buf = calloc(len + 2, 1);
-  buf[0] = 0x03;
+  buf[0] = STRING_SERIALIZE_FLAG;
   buf[1] = len;
   memcpy(buf + 2, str, len);
   return (serialized_string){.str = buf, .len = len};
@@ -513,11 +520,9 @@ char *deserialize_string(char *buf) {
 
   if (buf == NULL)
     return NULL;
-  if (buf[0] != 0x03) {
-    fprintf(stderr, "\x1b[31;1mInvalid string\x1b[0m\n");
+  if (buf[0] != STRING_SERIALIZE_FLAG) {
     return NULL;
   } else if (buf[1] == 0x00) {
-    fprintf(stderr, "\x1b[31;1mString is empty\x1b[0m\n");
     return NULL;
   }
 
@@ -529,18 +534,22 @@ char *deserialize_string(char *buf) {
 }
 
 char *serialize_enum(int e) {
-  // 0x01 0x01 0x00
+  // 0x05 0x01 0x00
   // ---- ---- ----
   // 3 Bytes + NULL Terminator
   char *buf = calloc(4, sizeof(char));
-  buf[0] = 0x01;
+  buf[0] = ENUM_SERIALIZE_FLAG;
   buf[1] = 0x01;
   buf[2] = e;
   buf[3] = '\0';
   return buf;
 }
 
-int deserialize_enum(char *buf) { return buf[2]; }
+int deserialize_enum(char *buf) {
+  if (buf[0] != ENUM_SERIALIZE_FLAG)
+    return -1;
+  return buf[2];
+}
 
 char *serialize_client(client_t *client) {
   unsigned int buf_length =
@@ -575,7 +584,7 @@ char *serialize_client(client_t *client) {
   buf_length += 6;
 
   char *buf = calloc(buf_length, sizeof(char));
-  buf[0] = 0x04;
+  buf[0] = CLIENT_SERIALIZE_FLAG;
   buf[1] =
       buf_length - 2 - 1; // Get rid of the length field and the null terminator
   // Move the Socket Field into the Buffer.
@@ -617,7 +626,8 @@ char *serialize_client(client_t *client) {
 
 client_t *deserialize_client(char *buf) {
   if (buf == NULL ||
-      buf[0] != 0x04) // Make sure that it is a serialized client_t
+      buf[0] !=
+          CLIENT_SERIALIZE_FLAG) // Make sure that it is a serialized client_t
     return NULL;
   client_t *client = calloc(1, sizeof(client_t));
   unsigned int offset = 2; // We want to ignore the type & length data. Each

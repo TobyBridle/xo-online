@@ -59,7 +59,8 @@ int main() {
           if (deserialize_int(buffer) == -1) {
             // We must leave the game.
             client->screen_state = GAME_VIEW_PAGE;
-            printf("\x1b[33;1mSorry, the game has ended!\r\n\x1b[0;0m");
+            printf(
+                "\x1b[2K\r\x1b[33;1mSorry, the game has ended!\r\n\x1b[0;0m");
             sleep(1);
             print_buffer(clear_screen);
 

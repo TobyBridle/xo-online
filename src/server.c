@@ -21,7 +21,7 @@ int main() {
 
   accepted_name_s_string = serialize_int(1);
   rejected_name_s_string = serialize_int(-1);
-  game_destroy_s_string = rejected_name_s_string;
+  game_destroy_s_string = serialize_int(GAME_SIG_EXIT);
   accepted_player_s_string = serialize_string("joined");
 
   // Initialize the server
@@ -251,11 +251,25 @@ void server_serve(server_t *server) {
         } else if (deserialize_int(buf) == 2 &&
                    client->screen_state == HOME_PAGE) {
           handle_game_create(server, client);
+        } else if (client->game != NULL && is_game_sig(buf[0])) {
+          game_t *game = client->game;
+          int sig_type = buf[0];
+          int is_sender_player =
+              game->players[game->isCurrentPlayerTurn]->socket ==
+              client->socket;
+          if (sig_type == GAME_SIG_CHECK && is_sender_player) {
+            smart_send(game->players[!game->isCurrentPlayerTurn]->socket, buf,
+                       7);
+          } else if (sig_type == GAME_SIG_CONFIRM && !is_sender_player) {
+            smart_send(game->players[game->isCurrentPlayerTurn]->socket, buf,
+                       4);
+            game->isCurrentPlayerTurn ^= 1;
+          }
         }
         if (received > 0)
           bzero(buf, received);
       } else if (recv_status == 0) {
-        handle_client_disconnect(server, client, head, client_id);
+        handle_client_disconnect(server, client, client_id);
       }
 
       // Set memory location of entry_id to the next entry id
@@ -334,6 +348,7 @@ int server_unbind(server_t *server) {
 
   free(accepted_name_s_string);
   free(rejected_name_s_string);
+  free(game_destroy_s_string);
   free(accepted_player_s_string.str);
 
   printf("\x1b[33;1mAttempting to kill server instance now\x1b[0;0m\n");
@@ -366,6 +381,7 @@ void handle_game_create(server_t *server, client_t *client) {
   /* game->spectators = *init_list(); */
   game->players[0] = client;
   game->validConnections = TRUE;
+  game->isCurrentPlayerTurn = TRUE;
 
   push_node(server->games, (NodeValue){.pointer = game});
   server->current_game_hash = hash_games_list(server->games);
@@ -386,6 +402,7 @@ int handle_game_join(server_t *server, client_t *client) {
 
   game->isFull = TRUE;
   game->players[1] = client;
+  game->isCurrentPlayerTurn = FALSE;
   client->game = game;
 
   // Acknowledge to the second client that we have started and
@@ -428,14 +445,20 @@ int handle_game_join(server_t *server, client_t *client) {
 
   // Instruct the client to print the prefilled board and then reset their
   // position.
-  smart_broadcast(game->players, 2, "\033[s", 4);
+  smart_broadcast(game->players, 2, "\0337", 3); // Save
   smart_broadcast(game->players, 2, prefilled, strlen(prefilled));
-  smart_broadcast(game->players, 2, "\033[r", 4); // Restore.
+
+  // Send the header for the current player turn.
+  smart_send(game->players[0]->socket, current_player_turn,
+             strlen(current_player_turn) + 1);
+  smart_send(game->players[1]->socket, enemy_turn, strlen(enemy_turn) + 1);
+
+  smart_broadcast(game->players, 2, "\0338", 3); // Restore.
   return 0;
 }
 
 void handle_client_disconnect(server_t *server, client_t *client,
-                              struct node *head, int client_id) {
+                              int client_id) {
   // The client has disconnected
   printf("\x1b[31;1mClient %d (%s) has disconnected\x1b[0m\n",
          client->client_id, client->client_name);

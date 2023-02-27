@@ -56,7 +56,7 @@ int main() {
           client->client_id = client_id;
           requires_username = TRUE;
         } else if (client->screen_state == IN_GAME_PAGE) {
-          if (deserialize_int(buffer) == -1) {
+          if (deserialize_int(buffer) == GAME_SIG_EXIT) {
             // We must leave the game.
             client->screen_state = GAME_VIEW_PAGE;
             printf(
@@ -69,8 +69,13 @@ int main() {
             char *view_games_req = serialize_int(1);
             smart_send(fds[0].fd, view_games_req, 7);
             free(view_games_req);
-          } else {
-            handle_game_input(client, deserialize_int(buffer), ENEMY);
+          } else if (is_game_sig(buffer[0])) {
+            // Switch out the buffer type so we can deserialize it
+            buffer[0] = INT_SERIALIZE_FLAG;
+            int pos = deserialize_int(buffer);
+            if (pos > 0 && pos <= BOARD_WIDTH * BOARD_WIDTH) {
+              handle_game_input(fds[0].fd, client, pos, ENEMY);
+            }
           }
         }
         print_buffer(buffer);
@@ -93,7 +98,7 @@ int main() {
 
     if (requires_username) {
       if (input_status < 1) {
-        printf("\033[s");        // save cursor position
+        printf("\0337");         // Save cursor position
         printf("\033[%d;0H", 7); // move cursor to y-coordinate 7
         printf("\033[;1mPlease Enter your Name:\x1b[;0m\r\n");
       }
@@ -135,7 +140,7 @@ int main() {
           smart_recv(fds[0].fd, buffer, 1024);
           if (deserialize_int(buffer) == 1) {
             printf("\033[%d;0H", 6); // Move to the line above the input dialog
-            printf("\033[s");
+            printf("\0337");
             printf("\033[J"); // Clear the screen below that line
             client->screen_state = HOME_PAGE;
             requires_username = FALSE;
@@ -154,7 +159,7 @@ int main() {
         printf("\033[2K");
 
         printf("%s\r\n", client->client_name);
-        printf("\033[u"); // restore cursor position
+        printf("\0338"); // restore cursor position
       }
 
       fflush(stdout);
@@ -209,6 +214,10 @@ int main() {
             s.str.str = deserialize_string(buffer);
             if (!strcmp(s.str.str, "joined")) {
               client->screen_state = IN_GAME_PAGE;
+              game_t *game = calloc(1, sizeof(game_t));
+              game->isCurrentPlayerTurn =
+                  FALSE; // The host will be going first.
+              client->game = game;
               setup_game_dep();
             }
             free(s.str.str);
@@ -407,6 +416,9 @@ void create_new_game(int socket, client_t *client, serialized *s) {
   setup_game_dep();
 
   client->screen_state = IN_GAME_PAGE;
+  game_t *game = calloc(1, sizeof(game_t));
+  game->isCurrentPlayerTurn = TRUE; // The game host gets to go first.
+  client->game = game;
 }
 
 void setup_game_dep() {
@@ -423,7 +435,7 @@ void setup_game_dep() {
     board[row][col].print_string = strdup(intermediate);
   }
 
-  update_board();
+  update_board(PLAYER);
 }
 
 void handle_game_input(client_t *client, unsigned int position, Source source) {
@@ -436,28 +448,60 @@ void handle_game_input(client_t *client, unsigned int position, Source source) {
   if (board[row][col].type != SERVER) // It has already been taken.
     return;
 
+  // All checks have been passed, update the board
+  if (source == ENEMY) {
+    char *confirm_message = serialize_bool(TRUE);
+    confirm_message[0] = GAME_SIG_CONFIRM;
+    smart_send(socket, confirm_message, 4);
+    goto change_board;
+  }
+
+  // Check if the other client thinks the move is valid.
+  char *check_message = serialize_int(position);
+  // The server will check this for whether it's a game signal or a normal int.
+  check_message[0] = GAME_SIG_CHECK;
+  smart_send(socket, check_message, 7);
+  free(check_message);
+
+  int res;
+  char buf[4];
+  // Wait for a response from the server.
+  res = smart_recv(socket, buf, 4);
+
+  // The move was not valid.
+  buf[0] = BOOL_SERIALIZE_FLAG; // Change from GAME_SIG_CONFIRM to bool so we
+                                // can deserialize
+  if (deserialize_bool(buf) == FALSE) {
+    return;
+  }
+
+change_board:
+
   free(board[row][col].print_string);
   board[row][col] = (board_piece){.piece = position, .type = source};
   snprintf(intermediate, intermediate_mem + 1, "\x1b[3%d;1m%c\x1b[0;0m",
-           source == PLAYER ? 3 : 1,
-           source == PLAYER ? 'x' : 'o'); // 3 -> 33 -> Green, 1 -> 31 -> Red
+           source == PLAYER ? 2 : 1, source == PLAYER ? 2 : 1,
+           source == PLAYER ? 'x' : 'o'); // 2 -> 32 -> Green, 1 -> 31 -> Red
   board[row][col].print_string = strdup(intermediate);
 
-  update_board();
+  update_board(source);
 
-  printf("\033[s");
-  printf("\033[2B");
+  printf("\0338");
+  printf("\0337");
+  printf("\033[B");
   print_buffer(printable_board);
-  printf("\033[u");
+
+  ((game_t *)client->game)->isCurrentPlayerTurn ^= 1; // Switch turns.
+  printf("\0338");
 }
 
-void update_board() {
+void update_board(int source) {
   snprintf(printable_board, printable_board_mem + 1, board_template,
            board[0][0].print_string, board[0][1].print_string,
            board[0][2].print_string, board[1][0].print_string,
            board[1][1].print_string, board[1][2].print_string,
            board[2][0].print_string, board[2][1].print_string,
-           board[2][2].print_string);
+           board[2][2].print_string, source != PLAYER ? "currently" : "not");
 }
 
 void print_buffer(char *buf) {

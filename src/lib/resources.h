@@ -25,17 +25,23 @@ StringResource waiting_room =
 
 StringResource playing_header = "\x1b[;1mYou're playing against %s!\n";
 
-const static char board_template[] = " %s | %s | %s\n"
-                                     "---+---+---\n"
-                                     " %s | %s | %s\n"
-                                     "---+---+---\n"
-                                     " %s | %s | %s\n";
+const static char board_template[] =
+    " %s | %s | %s\n"
+    "---+---+---\n"
+    " %s | %s | %s\n"
+    "---+---+---\n"
+    " %s | %s | %s\n\r\n\x1b[2K\x1b[;1mIt is %s your turn.\x1b[;0m";
 
 StringResource prefilled =
     " \x1b[30;1m1\x1b[0;0m | \x1b[30;1m2\x1b[0;0m | \x1b[30;1m3\x1b[0;0m\n"
     "---+---+---\n"
     " \x1b[30;1m4\x1b[0;0m | \x1b[30;1m5\x1b[0;0m | \x1b[30;1m6\x1b[0;0m\n"
     "---+---+---\n"
-    " \x1b[30;1m7\x1b[0;0m | \x1b[30;1m8\x1b[0;0m | \x1b[30;1m9\x1b[0;0m\n";
+    " \x1b[30;1m7\x1b[0;0m | \x1b[30;1m8\x1b[0;0m | \x1b[30;1m9\x1b[0;0m\n\r\n";
+
+StringResource current_player_turn =
+    "\x1b[;1mIt is currently your turn.\x1b[;0m";
+
+StringResource enemy_turn = "\x1b[;1mIt is not your turn.\x1b[;0m";
 
 #endif

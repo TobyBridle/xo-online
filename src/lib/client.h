@@ -83,7 +83,7 @@ void handle_game_input(
     client_t *client, unsigned int position,
     Source source); // Position is 1-9, we then break this down into
                     // the 3x3 grid using MOD and DIV
-void update_board();
+void update_board(int source);
 
 #ifndef HANDLE_SOCK_ERROR_FN
 #define HANDLE_SOCK_ERROR_FN

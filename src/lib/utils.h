@@ -28,6 +28,20 @@
 #define NEXT_ITER(head) head = head->next != NULL ? head->next : NULL;
 #endif
 
+#ifndef GAME_SIG_CHECK
+#define GAME_SIG_CHECK 9
+#endif
+
+#ifndef GAME_SIG_CONFIRM
+#define GAME_SIG_CONFIRM 10
+#endif
+
+#ifndef GAME_SIG_EXIT
+#define GAME_SIG_EXIT -10
+#endif
+
+#define is_game_sig(sig)                                                       \
+  (sig == GAME_SIG_EXIT || sig == GAME_SIG_CHECK || sig == GAME_SIG_CONFIRM)
 
 #include <ctype.h>
 #include <netinet/in.h>

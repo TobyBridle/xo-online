@@ -81,7 +81,7 @@ void handle_client_name_set(client_t *client, char *buf);
 void handle_game_create(server_t *server, client_t *client);
 int handle_game_join(server_t *server, client_t *client);
 void handle_client_disconnect(server_t *server, client_t *client,
-                              struct node *head, int client_id);
+                              int client_id);
 
 int render_games_page(server_t *server, client_t *client);
 

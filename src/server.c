@@ -112,7 +112,7 @@ int server_listen(server_t *server) {
   return listen_status;
 }
 
-client_t server_accept(server_t *server) {
+client_t *server_accept(server_t *server) {
   client_t *client = malloc(sizeof(client_t));
   struct sockaddr_in client_addr;
   socklen_t client_addr_len = sizeof(client_addr);
@@ -163,7 +163,7 @@ client_t server_accept(server_t *server) {
   // The ID of the client is assigned by popping the next
   // available ID from the stack
   put(&server->clients, client->client_id, (BucketValue){.client = client});
-  return *client;
+  return client;
 }
 
 void server_serve(server_t *server) {
@@ -287,17 +287,17 @@ void server_serve(server_t *server) {
           server->state = ACCEPTING;
         }
 
-        client_t client = server_accept(server);
+        client_t *client = server_accept(server);
         printf("\x1b[32;1mClient %d connected successfully\x1b[0m\n",
-               client.client_id);
-        int length = snprintf(NULL, 0, "%d", client.client_id) + 1;
+               client->client_id);
+        int length = snprintf(NULL, 0, "%d", client->client_id) + 1;
         char *client_id = calloc(length, sizeof(char));
-        sprintf(client_id, "%d", client.client_id);
-        smart_send(client.socket, client_id, length);
+        sprintf(client_id, "%d", client->client_id);
+        smart_send(client->socket, client_id, length);
         free(client_id);
 
-        smart_send(client.socket, clear_screen, strlen(clear_screen) + 1);
-        smart_send(client.socket, main_menu, strlen(main_menu) + 1);
+        smart_send(client->socket, clear_screen, strlen(clear_screen) + 1);
+        smart_send(client->socket, main_menu, strlen(main_menu) + 1);
       } else if (fds[0].revents & POLLERR) {
         printf("\x1b[31;1mError occurred\x1b[0m\n");
       }
@@ -326,12 +326,12 @@ void smart_broadcast(client_t **clients, size_t amount, char *message,
 int server_unbind(server_t *server) {
   // TODO: Implement freeing and closing of sockets.
   NodeValue entry_id;
-  client_t *client;
 
   // NOTE: This block is almost identical
   // To the `free_hashmap(&map)` function, with the difference
   // being that we get the client from the map and then close it.
   while ((entry_id = pop_node(server->clients.entry_ids)).err != -1) {
+    client_t *client;
     client = get(server->clients, entry_id.i_value).client;
     while (recv(client->socket, NULL, 1024, 0) > 0)
       ;
@@ -585,8 +585,9 @@ unsigned long hash_games_list(LinkedList *games) {
   unsigned int index = 0;
 
   struct node *curr = games->head;
-  game_t *game;
+
   while (curr != NULL) {
+    game_t *game;
     game = curr->data.pointer;
     hash = (hash * 31) + index * hash_string(game->players[0]->client_name, 67);
     hash += game->isFull ? index : 0;

@@ -462,7 +462,7 @@ char *serialize_int(int i) {
   return buf;
 }
 
-int deserialize_int(char *buf) {
+int deserialize_int(const char *buf) {
   // The buffer is not a serialized int
   if (buf[0] != INT_SERIALIZE_FLAG)
     return -1;
@@ -486,7 +486,7 @@ char *serialize_bool(BOOL b) {
   return buf;
 }
 
-BOOL deserialize_bool(char *buf) {
+BOOL deserialize_bool(const char *buf) {
   if (buf[0] != BOOL_SERIALIZE_FLAG)
     return -1;
   return buf[2] == 0x01;
@@ -516,7 +516,7 @@ serialized_string serialize_string(char *str) {
   return (serialized_string){.str = buf, .len = len};
 }
 
-char *deserialize_string(char *buf) {
+char *deserialize_string(const char *buf) {
 
   if (buf == NULL)
     return NULL;
@@ -545,7 +545,7 @@ char *serialize_enum(int e) {
   return buf;
 }
 
-int deserialize_enum(char *buf) {
+int deserialize_enum(const char *buf) {
   if (buf[0] != ENUM_SERIALIZE_FLAG)
     return -1;
   return buf[2];
@@ -624,7 +624,7 @@ char *serialize_client(client_t *client) {
   return buf;
 }
 
-client_t *deserialize_client(char *buf) {
+client_t *deserialize_client(const char *buf) {
   if (buf == NULL ||
       buf[0] !=
           CLIENT_SERIALIZE_FLAG) // Make sure that it is a serialized client_t
@@ -706,7 +706,7 @@ int smart_send(int socket, const void *data, int data_length) {
   return send(socket, data, len, 0);
 }
 
-int smart_recv(int socket, void *buffer, int buffer_size) {
+int smart_recv(int socket, const void *buffer, int buffer_size) {
   int len;
   int ret = recv(socket, &len, sizeof(len), 0);
   if (ret < 0)
@@ -716,7 +716,7 @@ int smart_recv(int socket, void *buffer, int buffer_size) {
   return recv(socket, buffer, len, 0);
 }
 
-unsigned int hash_string(char *buf, unsigned int mod) {
+unsigned int hash_string(const char *buf, unsigned int mod) {
   if (buf == NULL)
     return 0;
   unsigned int hash = 0;

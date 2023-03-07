@@ -75,7 +75,7 @@ void server_start(server_t *server);
 void server_serve(server_t *server);
 
 // Helpers used by the server_serve function
-client_t server_accept(server_t *server);
+client_t *server_accept(server_t *server);
 
 void handle_client_name_set(client_t *client, char *buf);
 void handle_game_create(server_t *server, client_t *client);

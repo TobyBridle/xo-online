@@ -463,10 +463,9 @@ void handle_game_input(client_t *client, unsigned int position, Source source) {
   smart_send(socket, check_message, 7);
   free(check_message);
 
-  int res;
   char buf[4];
   // Wait for a response from the server.
-  res = smart_recv(socket, buf, 4);
+  smart_recv(socket, buf, 4);
 
   // The move was not valid.
   buf[0] = BOOL_SERIALIZE_FLAG; // Change from GAME_SIG_CONFIRM to bool so we

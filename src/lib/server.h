@@ -80,6 +80,7 @@ client_t *server_accept(server_t *server);
 void handle_client_name_set(client_t *client, char *buf);
 void handle_game_create(server_t *server, client_t *client);
 int handle_game_join(server_t *server, client_t *client);
+void handle_game_unbind(server_t *server, client_t *client);
 void handle_client_disconnect(server_t *server, client_t *client,
                               int client_id);
 

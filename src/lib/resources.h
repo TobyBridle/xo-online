@@ -43,5 +43,6 @@ StringResource current_player_turn =
     "\x1b[;1mIt is currently your turn.\x1b[;0m";
 
 StringResource enemy_turn = "\x1b[;1mIt is not your turn.\x1b[;0m";
+StringResource game_end = "\x1b[2K\r\x1b[33;1mSorry, the game has ended!\r\n\x1b[0;0m";
 
 #endif

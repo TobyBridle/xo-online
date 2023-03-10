@@ -59,8 +59,7 @@ int main() {
           if (deserialize_int(buffer) == GAME_SIG_EXIT) {
             // We must leave the game.
             client->screen_state = GAME_VIEW_PAGE;
-            printf(
-                "\x1b[2K\r\x1b[33;1mSorry, the game has ended!\r\n\x1b[0;0m");
+            print_buffer(game_end);
             sleep(1);
             print_buffer(clear_screen);
 
@@ -195,6 +194,10 @@ int main() {
           client->screen_state = HOME_PAGE;
           print_buffer(clear_screen);
           print_buffer(main_menu);
+        } else if (client->screen_state == IN_GAME_PAGE) {
+          print_buffer(clear_screen);
+          smart_send(fds[0].fd, "b", 2);
+          client->screen_state = GAME_VIEW_PAGE;
         }
         break;
       case ' ':

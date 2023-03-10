@@ -238,10 +238,20 @@ void server_serve(server_t *server) {
           // we need to skip the iteration.
           if (render_games_page(server, client) == -3)
             continue;
-        } else if (!strcmp(buf, "b") &&
-                   client->screen_state == GAME_VIEW_PAGE) {
-          client->screen_state = HOME_PAGE;
-          client->last_sent_game_hash = 0;
+        } else if (!strcmp(buf, "b")) {
+          switch (client->screen_state) {
+          case IN_GAME_PAGE:
+            // We need to destroy the game.
+            handle_game_unbind(server, client);
+            client->screen_state = GAME_VIEW_PAGE;
+            client->last_sent_game_hash = 0;
+            render_games_page(server, client);
+            break;
+          default:
+            client->screen_state = HOME_PAGE;
+            client->last_sent_game_hash = 0;
+            break;
+          }
         } else if (!strcmp(buf, serialize_string(" ").str) &&
                    client->screen_state == GAME_VIEW_PAGE) {
           // The `handle_game_join` function returns `-3` to let us know that
@@ -394,6 +404,10 @@ int handle_game_join(server_t *server, client_t *client) {
   NodeValue node = pop_node(server->games);
   //  There are no games.
   if (node.err == -1) {
+<<<<<<< HEAD
+=======
+    render_games_page(server, client);
+>>>>>>> 81419b3 (fix: 🐛 client return from waiting room->game view)
     return -3; // This will be evaluated and used to continue the loop it was
                // called in
   }
@@ -457,12 +471,7 @@ int handle_game_join(server_t *server, client_t *client) {
   return 0;
 }
 
-void handle_client_disconnect(server_t *server, client_t *client,
-                              int client_id) {
-  // The client has disconnected
-  printf("\x1b[31;1mClient %d (%s) has disconnected\x1b[0m\n",
-         client->client_id, client->client_name);
-
+void handle_game_unbind(server_t *server, client_t *client) {
   if (client->game != NULL) {
     // We need to shut down the game if they're playing in one
     game_t *game = client->game;
@@ -483,6 +492,15 @@ void handle_client_disconnect(server_t *server, client_t *client,
     free(client->game);
     client->game = NULL;
   }
+}
+
+void handle_client_disconnect(server_t *server, client_t *client,
+                              int client_id) {
+  // The client has disconnected
+  printf("\x1b[31;1mClient %d (%s) has disconnected\x1b[0m\n",
+         client->client_id, client->client_name);
+
+  handle_game_unbind(server, client);
 
   // Close the socket
   while (recv(client->socket, NULL, 1024, 0) > 0)

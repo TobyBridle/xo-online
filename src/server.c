@@ -371,8 +371,7 @@ void handle_client_name_set(client_t *client, char *buf) {
   uint8_t trimmed_length = trim_whitespace(name);
 
   if (trimmed_length == name_length || name_length > MAX_CLIENT_NAME_LENGTH) {
-    smart_send(client->socket, rejected_name_s_string,
-               strlen(rejected_name_s_string) + 1);
+    smart_send(client->socket, rejected_name_s_string, 7);
   } else {
     client->client_name = name;
     smart_send(client->socket, accepted_name_s_string, 7);
@@ -438,7 +437,8 @@ int handle_game_join(server_t *server, client_t *client) {
     // We will send the shorter string first (player 1)
     snprintf(formatted, formatted_length, playing_header,
              game->players[0]->client_name);
-    smart_send(game->players[1]->socket, formatted, formatted_length);
+    smart_send(game->players[1]->socket, formatted,
+               strlen(playing_header) + player_one_len + 1);
 
     // Then we send the longer string (it will override the shorter one, meaning
     // we can use the same memory space)
@@ -449,7 +449,8 @@ int handle_game_join(server_t *server, client_t *client) {
   } else {
     snprintf(formatted, formatted_length, playing_header,
              game->players[1]->client_name);
-    smart_send(game->players[0]->socket, formatted, formatted_length);
+    smart_send(game->players[0]->socket, formatted,
+               strlen(playing_header) + player_two_len + 1);
 
     snprintf(formatted, formatted_length, playing_header,
              game->players[0]->client_name);
@@ -460,7 +461,7 @@ int handle_game_join(server_t *server, client_t *client) {
   // Instruct the client to print the prefilled board and then reset their
   // position.
   smart_broadcast(game->players, 2, "\0337", 3); // Save
-  smart_broadcast(game->players, 2, prefilled, strlen(prefilled));
+  smart_broadcast(game->players, 2, prefilled, strlen(prefilled) + 1);
 
   // Send the header for the current player turn.
   smart_send(game->players[0]->socket, current_player_turn,
@@ -587,7 +588,9 @@ int render_games_page(server_t *server, client_t *client) {
   NodeValue val;
   while ((val = pop_node(games_string)).err != -1) {
     serialized_string *str = val.pointer;
-    smart_send(client->socket, str->str, str->len);
+    smart_send(client->socket, str->str,
+               str->len +
+                   2); // + 2 accounts for len param and serialized type param
     free(str->str);
     free(str);
   }

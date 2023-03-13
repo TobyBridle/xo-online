@@ -319,9 +319,6 @@ void server_serve(server_t *server) {
         sprintf(client_id, "%d", client->client_id);
         smart_send(client->socket, client_id, length);
         free(client_id);
-
-        smart_send(client->socket, clear_screen, strlen(clear_screen) + 1);
-        smart_send(client->socket, main_menu, strlen(main_menu) + 1);
       } else if (fds[0].revents & POLLERR) {
         printf("\x1b[31;1mError occurred\x1b[0m\n");
       }

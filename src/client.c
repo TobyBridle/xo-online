@@ -55,6 +55,9 @@ int main() {
                  buffer);
           client->client_id = client_id;
           requires_username = TRUE;
+          client->client_name = calloc(MAX_CLIENT_NAME_LENGTH, sizeof(char));
+          print_buffer(clear_screen);
+          print_buffer(main_menu);
         } else if (client->screen_state == IN_GAME_PAGE) {
           if (deserialize_int(buffer) == GAME_SIG_EXIT) {
             // We must leave the game.
@@ -86,7 +89,14 @@ int main() {
             handle_game_input(fds[0].fd, client, signal, ENEMY);
           }
         }
-        print_buffer(buffer);
+        if (client->client_name != NULL &&
+            client->client_name[0] !=
+                0) // The server doesn't send anything useful
+                   // for output until after we have joined
+        {
+          print_buffer(buffer);
+        }
+
         // Prevent previous long messages leaking into new short messages
         if (received > 0)
           bzero(buffer, received);
@@ -347,6 +357,7 @@ client_t *client_init() {
     client->socket = socket_fd;
   }
 
+  client->client_name = NULL;
   client->screen_state = SETUP_PAGE;
   client->game = NULL;
 

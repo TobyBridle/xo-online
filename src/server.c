@@ -356,7 +356,8 @@ int server_unbind(server_t *server) {
       ;
     close(client->socket);
     free(client->client_name);
-    free(client->game);
+    handle_game_unbind(server, client);
+    client->game = NULL;
     printf("\x1b[32;1mClosed connection from Client %d\x1b[0;0m\n",
            client->client_id);
     remove_value(&server->clients, entry_id.i_value);

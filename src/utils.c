@@ -321,7 +321,7 @@ void handle_sock_error(int err) {
     error_message =
         "\x1b[41;30;1mSorry, you can't do that: the address is already in "
         "use\r\n\x1b[0;0m"
-        "\x1b[43;30;1mIf you are trying to launch the server, make sure that"
+        "\x1b[43;30;1mIf you are trying to launch the server, make sure that "
         "you've not already got one running!";
     printf("%s\r\n\x1b[0;0m", error_message);
     perror("\x1b[41;30;1mThe given address is already in use.\x1b[0m\n");

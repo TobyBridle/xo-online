@@ -413,6 +413,9 @@ void handle_game_create(server_t *server, client_t *client) {
 int handle_game_join(server_t *server, client_t *client) {
   // Dequeue Game (FIFO)
   NodeValue node = pop_node(server->games);
+
+  // Register that we need to re-render.
+  server->current_game_hash = 13;
   //  There are no games.
   if (node.err == -1) {
     render_games_page(server, client);

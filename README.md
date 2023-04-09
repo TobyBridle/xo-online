@@ -9,6 +9,21 @@ toby@desktop:~/xo-online$ mkdir bin && mkdir tests/bin \
   && make
 ```
 
+Once you have completed the setup step, simply run the server. If you are still in the root of the project,
+you'll need to run
+
+```fish
+toby@desktop:~/xo-online$ ./bin/server
+```
+
+for the server.
+
+Conversely, if you would like to connect as a client:
+
+```fish
+toby@desktop:~/xo-online$ ./bin/client
+```
+
 ### Only the Necessities
 
 If you would like to create only the server & client, omitting

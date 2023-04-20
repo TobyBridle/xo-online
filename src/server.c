@@ -133,6 +133,16 @@ client_t *server_accept(server_t *server) {
   client->last_sent_game_hash = 0;
   client->screen_state = SETUP_PAGE;
 
+  // We need to set the socket to blocking
+  int flags = fcntl(client_socket, F_GETFL, 0);
+  int ret = fcntl(client_socket, F_SETFL, flags | O_NONBLOCK);
+  if (ret == -1) {
+    // We cannot accept the socket.
+    close(client_socket);
+    free(client);
+    return NULL;
+  }
+
   // We need to get the next available ID
   // Since the entry_ids are ordered in ascending
   // we can just loop over them and find the first

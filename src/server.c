@@ -65,13 +65,12 @@ server_t *server_init(short port) {
          htons(server_addr.sin_port));
 
   // Set socket to non-blocking
-#ifdef _WIN32
-  unsigned long mode = 1;
-  ioctlsocket(socket_fd, FIONBIO, &mode);
-#else
   int flags = fcntl(socket_fd, F_GETFL, 0);
-  fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK);
-#endif
+  int ret = fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK);
+  if (ret == -1) {
+    handle_sock_error(errno);
+    exit(1);
+  }
 
   // Set the socket to reuse the address
   int optval = 1;

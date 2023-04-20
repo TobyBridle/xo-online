@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/errno.h>
-#include <sys/ioctl.h>
 #include <sys/signal.h>
 #include <sys/time.h>
 #include <sys/types.h>

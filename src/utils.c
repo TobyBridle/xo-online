@@ -310,9 +310,11 @@ void handle_sock_error(int err) {
   case EACCES:
     error_message =
         "\x1b[41;30;1mSorry, you do not have permission to do "
-        "that.\r\n\x1b[0;0m"
-        "\x1b[43;30;1mThere isn't really anything we can do to help you. Maybe "
-        "get in touch with one of your seniors!\x1b[0;0m";
+        "that.\x1b[0;0m\r\n"
+        "\x1b[43;30;1mIf you haven't already, try running with "
+        "`sudo` permissions.\x1b[0;0m\n"
+        "\x1b[;1mExample: sudo ./server\n"
+        "\x1b[41;30;1mMaybe get in touch with one of your seniors!\x1b[0;0m";
     printf("%s\r\n\x1b[0;0m", error_message);
     perror("\x1b[41;30;1mPermission to create a socket of the specified type "
            "and/or to bind to the specified port is denied.\x1b[0m\n");
